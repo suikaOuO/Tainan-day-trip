@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台南美食集章之旅</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+  :root{
+    --paper: #F3EAD9;
+    --paper-2: #EADFC8;
+    --ink: #24201A;
+    --night: #16302B;
+    --night-2: #1F4239;
+    --lantern: #D8552A;
+    --lantern-2: #B33D1B;
+    --gold: #C99A3F;
+    --jade: #3F6C5D;
+    --brick: #8B3A2B;
+    --line: rgba(36,32,26,0.16);
+    --paper-shadow: 0 10px 30px rgba(36,20,10,0.18);
+    --stamp-red: #B0301F;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 8%, rgba(216,85,42,0.08), transparent 40%),
+      radial-gradient(circle at 90% 4%, rgba(63,108,93,0.10), transparent 45%),
+      var(--paper);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif;
+    line-height:1.6;
+  }
+  .paper-texture{
+    background-image:
+      repeating-linear-gradient(0deg, rgba(36,32,26,0.015) 0px, rgba(36,32,26,0.015) 1px, transparent 1px, transparent 3px);
+  }
+  h1,h2,h3,.display{
+    font-family:'Noto Serif TC', serif;
+    letter-spacing:0.02em;
+  }
+  a{color:inherit;}
+  button{font-family:inherit;}
+
+  /* ===== HERO ===== */
+  .hero{
+    position:relative;
+    padding:64px 20px 46px;
+    text-align:center;
+    background:
+      linear-gradient(180deg, var(--night) 0%, var(--night-2) 62%, transparent 100%);
+    color:var(--paper);
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      radial-gradient(circle, rgba(201,154,63,0.55) 1.5px, transparent 1.6px);
+    background-size:26px 26px;
+    opacity:0.18;
+    pointer-events:none;
+  }
+  .hero-eyebrow{
+    display:inline-block;
+    font-size:12.5px;
+    letter-spacing:0.32em;
+    color:var(--gold);
+    border:1px solid rgba(201,154,63,0.55);
+    padding:5px 14px;
+    border-radius:999px;
+    margin-bottom:18px;
+    position:relative;
+  }
+  .hero h1{
+    font-size:clamp(32px, 6vw, 52px);
+    margin:0 0 10px;
+    font-weight:900;
+    color:#F7EFDD;
+    text-shadow:0 2px 0 rgba(0,0,0,0.25);
+  }
+  .hero p.sub{
+    max-width:520px;
+    margin:0 auto 26px;
+    color:#CFE3DB;
+    font-size:15px;
+  }
+  .progress-wrap{
+    max-width:460px;
+    margin:0 auto;
+    position:relative;
+  }
+  .progress-bar-outer{
+    height:10px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.14);
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,0.18);
+  }
+  .progress-bar-inner{
+    height:100%;
+    background:linear-gradient(90deg, var(--lantern), var(--gold));
+    width:0%;
+    transition:width .5s ease;
+    border-radius:999px;
+  }
+  .progress-label{
+    margin-top:10px;
+    font-size:13.5px;
+    color:var(--paper-2);
+    letter-spacing:0.05em;
+  }
+  .progress-label b{color:var(--gold); font-size:16px;}
+
+  /* ===== SECTION SHELL ===== */
+  section{
+    max-width:980px;
+    margin:0 auto;
+    padding:56px 20px;
+  }
+  .section-head{
+    text-align:center;
+    margin-bottom:38px;
+  }
+  .section-head .tag{
+    font-size:12px;
+    letter-spacing:0.28em;
+    color:var(--jade);
+    font-weight:700;
+    display:block;
+    margin-bottom:8px;
+  }
+  .section-head h2{
+    font-size:clamp(24px,4vw,32px);
+    margin:0 0 8px;
+    color:var(--ink);
+  }
+  .section-head p{
+    color:#5b5347;
+    font-size:14.5px;
+    max-width:480px;
+    margin:0 auto;
+  }
+
+  /* ===== TRAIL / LEVELS ===== */
+  .trail{
+    position:relative;
+    padding:20px 0 10px;
+  }
+  .trail::before{
+    content:"";
+    position:absolute;
+    left:50%;
+    top:0; bottom:0;
+    width:3px;
+    transform:translateX(-50%);
+    background:repeating-linear-gradient(180deg, var(--brick) 0 10px, transparent 10px 20px);
+    opacity:0.35;
+  }
+  .stop{
+    position:relative;
+    display:flex;
+    justify-content:flex-start;
+    margin-bottom:26px;
+  }
+  .stop.right{justify-content:flex-end;}
+  .stop-card{
+    width:min(420px, 84%);
+    background:#FBF6EB;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 18px;
+    box-shadow:var(--paper-shadow);
+    position:relative;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .stop-card:hover{transform:translateY(-2px);}
+  
+  .stop-num{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:40px; height:40px;
+    border-radius:50%;
+    background:var(--night);
+    color:var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700;
+    font-family:'Noto Serif TC', serif;
+    font-size:15px;
+    border:3px solid var(--paper);
+    box-shadow:0 0 0 2px var(--brick);
+    z-index:2;
+  }
+  .stop.done .stop-num{background:var(--jade); box-shadow:0 0 0 2px var(--jade);}
+  .stop.current .stop-num{background:var(--lantern); box-shadow:0 0 0 2px var(--gold); animation:pulse 1.8s infinite;}
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 2px var(--gold);}
+    50%{box-shadow:0 0 0 6px rgba(201,154,63,0.35);}
+  }
+  .stop-top{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .stop-icon{font-size:22px;}
+  .stop-title{font-family:'Noto Serif TC', serif; font-weight:700; font-size:17px; flex:1;}
+  .stop-status{font-size:11px; padding:3px 9px; border-radius:999px; font-weight:700; letter-spacing:0.04em; white-space:nowrap;}
+  
+  .stop-status.pending{background:#e6ddc9; color:#8a8065;}
+  .stop-status.current{background:var(--lantern); color:#fff;}
+  .stop-status.done{background:var(--jade); color:#fff;}
+  
+  .stop-meta{font-size:12.5px; color:#7a7160; margin-bottom:6px;}
+  .stop-note{font-size:13px; color:#4a453a;}
+  .stamp{
+    position:absolute;
+    top:10px; right:12px;
+    width:52px; height:52px;
+    border:3px solid var(--stamp-red);
+    border-radius:8px;
+    color:var(--stamp-red);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Noto Serif TC', serif;
+    font-weight:900;
+    font-size:12px;
+    transform:rotate(-11deg);
+    opacity:0.9;
+    line-height:1.15;
+    text-align:center;
+    background:rgba(176,48,31,0.04);
+  }
+
+  /* ===== MODAL ===== */
+  .modal-backdrop{
+    position:fixed; inset:0;
+    background:rgba(20,15,10,0.55);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:50;
+    padding:20px;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:var(--paper);
+    border-radius:18px;
+    max-width:420px;
+    width:100%;
+    padding:26px 24px 22px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    position:relative;
+    border:1px solid var(--line);
+    max-height:90vh;
+    overflow-y:auto;
+  }
+  .modal h3{margin:0 0 4px; font-size:21px;}
+  .modal .modal-meta{font-size:12.5px; color:#7a7160; margin-bottom:14px;}
+  .modal .modal-note{font-size:13.5px; color:#4a453a; margin-bottom:16px;}
+  .modal-close{
+    position:absolute; top:14px; right:16px;
+    background:none; border:none; font-size:20px; cursor:pointer; color:#8a8065;
+  }
+
+  /* Modal 導航與菜單樣式 */
+  .menu-box {
+    background: #FBF6EB;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    color: #5b5347;
+    margin-bottom: 16px;
+    border: 1px dashed var(--line);
+    line-height: 1.5;
+  }
+  .action-btns {
+    display: flex; gap: 10px; margin-bottom: 20px;
+  }
+  .btn-link {
+    flex: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-weight: 700;
+    font-size: 13.5px;
+    transition: transform .12s ease;
+    border: 1px solid transparent;
+  }
+  .btn-link:active { transform: scale(0.97); }
+  .btn-nav { background: var(--jade); color: #fff; }
+  .btn-nav:hover { background: #32574A; }
+  .btn-menu { background: transparent; color: var(--lantern-2); border-color: var(--lantern-2); }
+
+  .field-label{font-size:12.5px; font-weight:700; color:var(--night); display:block; margin-bottom:6px;}
+  .amount-row{display:flex; gap:8px; margin-bottom:16px;}
+  .amount-row input{
+    flex:1;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    font-size:15px;
+    background:#fff;
+  }
+  .cat-select{
+    padding:10px 10px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:13.5px;
+  }
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    gap:6px;
+    border:none;
+    border-radius:12px;
+    padding:11px 18px;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--lantern); color:#fff; width:100%;}
+  .btn-primary:hover{background:var(--lantern-2);}
+  .btn-secondary{background:transparent; color:var(--jade); border:1px solid var(--jade); width:100%; margin-top:8px;}
+  .modal-done-tag{
+    display:inline-block; background:var(--jade); color:#fff; font-size:12px; font-weight:700;
+    padding:4px 10px; border-radius:999px; margin-bottom:14px;
+  }
+
+  /* ===== MAP ===== */
+  .map-shell{
+    border-radius:20px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    box-shadow:var(--paper-shadow);
+    height:460px;
+    z-index: 10; /* 確保地圖層級正常 */
+  }
+  #map{height:100%; width:100%; background:#e5ded0; z-index: 1;}
+  .map-legend{
+    display:flex; gap:16px; flex-wrap:wrap;
+    justify-content:center;
+    margin-top:14px;
+    font-size:12.5px;
+    color:#5b5347;
+  }
+  .map-legend span{display:inline-flex; align-items:center; gap:6px;}
+  .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
+  .leaflet-popup-content{font-family:'Noto Sans TC', sans-serif; font-size:13px; margin: 10px 14px;}
+
+  /* 自訂地圖數字標籤 (取代原本的圈圈) */
+  .num-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: #fff;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 13px;
+    border: 2px solid #FBF6EB;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+  }
+  .num-marker.pending { background: #9a9384; }
+  .num-marker.done { background: var(--jade); }
+  .num-marker.current { 
+    background: var(--lantern); 
+    font-size: 15px; 
+    border-width: 3px; 
+    box-shadow: 0 4px 10px rgba(216,85,42,0.5); 
+  }
+
+  /* ===== EXPENSES ===== */
+  .expense-wrap{
+    background:#FBF6EB;
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:26px 24px;
+    box-shadow:var(--paper-shadow);
+  }
+  .expense-total{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding-bottom:18px; margin-bottom:18px;
+    border-bottom:1px dashed var(--line);
+  }
+  .expense-total .label{font-size:13px; color:#7a7160; letter-spacing:0.04em;}
+  .expense-total .value{font-family:'Noto Serif TC', serif; font-size:34px; font-weight:900; color:var(--lantern-2);}
+  .cat-bars{margin-bottom:20px;}
+  .cat-bar-row{margin-bottom:12px;}
+  .cat-bar-row .cat-top{display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:5px; color:var(--ink);}
+  .cat-bar-track{height:9px; border-radius:999px; background:#EADFC8; overflow:hidden;}
+  .cat-bar-fill{height:100%; border-radius:999px; background:linear-gradient(90deg, var(--jade), var(--gold));}
+  .expense-list{border-top:1px dashed var(--line); padding-top:14px;}
+  .expense-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:9px 0;
+    font-size:13.5px;
+    border-bottom:1px solid rgba(36,32,26,0.06);
+  }
+  .expense-item:last-child{border-bottom:none;}
+  .expense-item .name{display:flex; align-items:center; gap:8px; color:var(--ink);}
+  .expense-item .name .cat-chip{font-size:10.5px; color:var(--jade); border:1px solid var(--jade); padding:1px 7px; border-radius:999px;}
+  .expense-item .amt{font-weight:700; color:var(--lantern-2); font-family:'Noto Serif TC', serif;}
+  .expense-empty{text-align:center; color:#8a8065; font-size:13px; padding:16px 0;}
+
+  footer{
+    text-align:center;
+    padding:36px 20px 50px;
+    font-size:12.5px;
+    color:#8a8065;
+  }
+  footer .reset-btn{
+    background:none; border:1px solid var(--line); color:#7a7160;
+    padding:8px 16px; border-radius:999px; font-size:12px; cursor:pointer; margin-top:14px;
+  }
+
+  @media (max-width:640px){
+    .trail::before{left:24px;}
+    .stop, .stop.right{justify-content:flex-start; padding-left:52px;}
+    .stop-card{width:100%;}
+    .stop-num{left:24px; transform:translate(-50%,-50%);}
+    .map-shell{height:380px;}
+  }
+</style>
+</head>
+<body class="paper-texture">
+
+  <div class="hero">
+    <span class="hero-eyebrow">台南一日遊</span>
+    <h1>一路吃吃喝喝就對了</h1>
+    <p class="sub">從台中出發，一站一站吃了他，順手記下花了多少錢。</p>
+    <div class="progress-wrap">
+      <div class="progress-bar-outer"><div class="progress-bar-inner" id="progressBar"></div></div>
+      <div class="progress-label">已蓋 <b id="progressCount">0</b> / 12 枚印章</div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <span class="tag">ROUTE MAP · 位置地圖</span>
+      <h2>踩點地圖</h2>
+      <p>灰圈是待前往、紅圈放大是目前的下一站、綠圈是已經去過的地方。點擊可查看導航。</p>
+    </div>
+    <div class="map-shell"><div id="map"></div></div>
+    <div class="map-legend">
+      <span><i class="dot" style="background:#9a9384;"></i>待前往</span>
+      <span><i class="dot" style="background:#D8552A; transform:scale(1.3);"></i>📍 下一站</span>
+      <span><i class="dot" style="background:#3F6C5D;"></i>已完成</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="tag">踩點地圖</span>
+      <h2>一路吃到花園夜市</h2>
+      <p>隨時點擊下方任一關卡查看詳細菜單，吃完他後，地圖會自動為你標示下一站的目標喔！</p>
+    </div>
+    <div class="trail" id="trail"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="tag">EXPENSE Ledger · 花費帳本</span>
+      <h2>這趟旅程花了多少錢</h2>
+      <p>每打卡一關輸入花費，這裡會自動幫你統計總額與各類別佔比。</p>
+    </div>
+    <div class="expense-wrap">
+      <div class="expense-total">
+        <span class="label">目前總花費</span>
+        <span class="value" id="totalAmount">$0</span>
+      </div>
+      <div class="cat-bars" id="catBars"></div>
+      <div class="expense-list" id="expenseList"></div>
+    </div>
+  </section>
+
+  <footer>
+    台南美食集章之旅 · 資料僅供行程參考，實際營業狀況請以店家公告為準
+    <br>
+    <button class="reset-btn" id="resetBtn">重設所有進度</button>
+  </footer>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <button class="modal-close" id="modalClose">✕</button>
+      <div id="modalDoneTag"></div>
+      <h3 id="modalTitle"></h3>
+      <div class="modal-meta" id="modalMeta"></div>
+      <div class="modal-note" id="modalNote"></div>
+
+      <div id="modalMenuBox" class="menu-box" style="display:none;"></div>
+      <div class="action-btns">
+        <a href="#" target="_blank" class="btn-link btn-nav" id="modalNavBtn">🧭 導航去這</a>
+        <a href="#" target="_blank" class="btn-link btn-menu" id="modalMenuBtn" style="display:none;">📖 參考線上菜單</a>
+      </div>
+
+      <label class="field-label">這一站花了多少錢？（沒花費可留空或填 0）</label>
+      <div class="amount-row">
+        <input type="number" min="0" id="amountInput" placeholder="輸入金額，例如 120">
+        <select class="cat-select" id="catSelect">
+          <option value="交通">交通</option>
+          <option value="租車">租車</option>
+          <option value="餐飲">餐飲</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="confirmBtn">蓋章打卡 ✓</button>
+      <button class="btn btn-secondary" id="undoBtn" style="display:none;">取消打卡（重新解鎖）</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+
+  const STOPS = [
+    { id:1, name:"目前位置（台中北區）", icon:"🏠", lat:24.1620, lng:120.6795,
+      meta:"準備出發", note:"整趟旅程的起點，確認好行李與駕照就可以出發囉。", cat:"其他",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=24.1620,120.6795" },
+    { id:2, name:"朝馬轉運站", icon:"🚌", lat:24.1691, lng:120.6376,
+      meta:"前往客運站", note:"依照購買的客運班次，至指定月台搭車前往台南。", cat:"交通",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=朝馬轉運站" },
+    { id:3, name:"台南轉運站", icon:"🚏", lat:22.9973, lng:120.2131,
+      meta:"客運抵達", note:"抵達台南的第一站，正式踏入府城。", cat:"交通",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=台南轉運站" },
+    { id:4, name:"古巷速客達租車", icon:"🛵", lat:22.9998, lng:120.2103,
+      meta:"步行約 10 分鐘", note:"網路評價推薦的租車行，辦理手續並領取機車。記得攜帶駕照。", cat:"租車",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=古巷速客達租車" },
+    { id:5, name:"溫爸鵝肉", icon:"🍗", lat:23.0068, lng:120.2039,
+      meta:"騎機車約 4 分鐘", note:"首站美食，每日限量賣完為止，建議留意線上點餐系統狀況。", cat:"餐飲",
+      menu:"🦆 招牌推薦：<br>• 鵝肉切盤 (限量)<br>• 鵝油拌飯<br>• 下水湯",
+      menuLink:"https://www.facebook.com/search/top?q=%E6%BA%AB%E7%88%B8%E9%B5%9D%E8%82%89",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=溫爸鵝肉+台南" },
+    { id:6, name:"阿棠牛肉湯", icon:"🍲", lat:22.9958, lng:120.1965,
+      meta:"騎機車約 6 分鐘", note:"品嚐台南最具代表性的溫體牛肉湯。", cat:"餐飲",
+      menu:"🐂 熱門餐點：<br>• 招牌溫體牛肉湯 $120~$230<br>• 高麗菜炒牛肉 $140<br>• 蒜頭牛肉湯 $170<br>• 麻油牛肉 $170",
+      menuLink:"https://www.ubereats.com/tw/store/%E9%98%BF%E5%A0%82%E7%89%9B%E8%82%89%E5%B0%88%E8%B3%A3-%E5%AE%89%E5%B9%B3%E5%BA%97/3dkY_nl4SyC_3t1SKRzjLw",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=阿棠牛肉湯" },
+    { id:7, name:"昔昔", icon:"🍙", lat:22.9962, lng:120.1997,
+      meta:"騎機車約 3 分鐘", note:"巷弄內的文青風格小店，享用餐後手作飯糰。", cat:"餐飲",
+      menu:"🍙 口味選擇：<br>• 明太子醬油漬蛋黃飯丸<br>• 鰹魚鬆醬油漬蛋黃飯丸<br>• 紫蘇梅 / 鹽昆布 / 鮪魚美乃滋",
+      menuLink:"https://www.ubereats.com/tw/store/%E6%98%94%E6%98%94-%E6%97%A5%E5%BC%8F%E6%89%8B%E4%BD%9C%E9%A3%AF%E4%B8%B8/Gkw0sEI2U_yFrXTDoAYDTw",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=昔昔+台南+飯糰" },
+    { id:8, name:"雙生綠豆沙牛奶", icon:"🥤", lat:22.9968, lng:120.2020,
+      meta:"騎機車約 3 分鐘", note:"排隊超人氣飲品，買杯冰涼綠豆沙解渴。", cat:"餐飲",
+      menu:"🥤 必點飲品：<br>• 綠豆沙牛奶 (招牌必喝)<br>• 綠豆沙<br>• 紅茶牛奶",
+      menuLink:"https://www.facebook.com/ShuansenBeverages/",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=雙生綠豆沙牛奶" },
+    { id:9, name:"神農街", icon:"🏮", lat:22.9975, lng:120.1998,
+      meta:"騎機車約 3 分鐘", note:"保留復古風情的台南老街，吃飽喝足後悠閒漫步。", cat:"其他",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=台南神農街" },
+    { id:10, name:"台南花園夜市", icon:"🎪", lat:23.0068, lng:120.1969,
+      meta:"騎機車約 6 分鐘", note:"晚間重頭戲，體驗南部大型夜市的豐富小吃與熱鬧氛圍。", cat:"餐飲",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=台南花園夜市" },
+    { id:11, name:"古巷速客達租車（還車）", icon:"🔁", lat:22.9998, lng:120.2103,
+      meta:"騎機車約 5 分鐘", note:"結束一整天的市區行程，將機車騎回原處歸還。", cat:"租車",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=古巷速客達租車" },
+    { id:12, name:"台南轉運站（返程）", icon:"🏁", lat:22.9973, lng:120.2131,
+      meta:"步行約 10 分鐘", note:"搭乘客運返回台中，為這趟旅程畫下完美句點。", cat:"交通",
+      nav:"https://www.google.com/maps/dir/?api=1&destination=台南轉運站" },
+  ];
+
+  const STORAGE_KEY = "tainan-trip-progress";
+  let state = { completed: [], expenses: {} };
+  let storageReady = false;
+
+  const trailEl = document.getElementById('trail');
+  const progressBar = document.getElementById('progressBar');
+  const progressCount = document.getElementById('progressCount');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalMeta = document.getElementById('modalMeta');
+  const modalNote = document.getElementById('modalNote');
+  const modalDoneTag = document.getElementById('modalDoneTag');
+  const amountInput = document.getElementById('amountInput');
+  const catSelect = document.getElementById('catSelect');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const undoBtn = document.getElementById('undoBtn');
+
+  const modalMenuBox = document.getElementById('modalMenuBox');
+  const modalNavBtn = document.getElementById('modalNavBtn');
+  const modalMenuBtn = document.getElementById('modalMenuBtn');
+
+  let activeStopId = null;
+
+  function currentStageId(){
+    for(const s of STOPS){
+      if(!state.completed.includes(s.id)) return s.id;
+    }
+    return null; 
+  }
+
+  function statusOf(id){
+    if(state.completed.includes(id)) return 'done';
+    if(id === currentStageId()) return 'current';
+    return 'pending';
+  }
+
+  function renderTrail(){
+    trailEl.innerHTML = '';
+    STOPS.forEach((s, idx) => {
+      const status = statusOf(s.id);
+      const side = idx % 2 === 0 ? '' : 'right';
+      const wrap = document.createElement('div');
+      wrap.className = `stop ${side} ${status}`;
+      
+      const statusLabel = status === 'done' ? '已蓋章' : (status === 'current' ? '📍 下一站' : '待前往');
+      
+      wrap.innerHTML = `
+        <div class="stop-num">${s.id}</div>
+        <div class="stop-card">
+          ${status === 'done' ? `<div class="stamp">府城<br>已達</div>` : ''}
+          <div class="stop-top">
+            <span class="stop-icon">${s.icon}</span>
+            <span class="stop-title">${s.name}</span>
+            <span class="stop-status ${status}">${statusLabel}</span>
+          </div>
+          <div class="stop-meta">${s.meta}</div>
+          <div class="stop-note">${s.note}</div>
+        </div>
+      `;
+      // 清單卡片依然保留點擊開啟大視窗打卡的功能
+      wrap.addEventListener('click', () => openModal(s.id));
+      trailEl.appendChild(wrap);
+    });
+    const pct = Math.round((state.completed.length / STOPS.length) * 100);
+    progressBar.style.width = pct + '%';
+    progressCount.textContent = state.completed.length;
+  }
+
+  function openModal(id){
+    activeStopId = id;
+    const s = STOPS.find(x => x.id === id);
+    modalTitle.textContent = `${s.icon} ${s.name}`;
+    modalMeta.textContent = s.meta;
+    modalNote.textContent = s.note;
+
+    modalNavBtn.href = s.nav;
+    if(s.menu){
+      modalMenuBox.style.display = 'block';
+      modalMenuBox.innerHTML = `<strong>📋 參考資訊：</strong><br>${s.menu}`;
+    } else {
+      modalMenuBox.style.display = 'none';
+    }
+    if(s.menuLink){
+      modalMenuBtn.style.display = 'inline-flex';
+      modalMenuBtn.href = s.menuLink;
+    } else {
+      modalMenuBtn.style.display = 'none';
+    }
+
+    const status = statusOf(id);
+    const done = status === 'done';
+    modalDoneTag.innerHTML = done ? `<span class="modal-done-tag">已蓋章 ✓</span>` : '';
+    const existing = state.expenses[id];
+    amountInput.value = existing ? existing.amount : '';
+    catSelect.value = existing ? existing.cat : s.cat;
+    confirmBtn.textContent = done ? '更新花費紀錄' : '蓋章打卡 ✓';
+    undoBtn.style.display = done ? 'inline-flex' : 'none';
+    modalBackdrop.classList.add('open');
+  }
+
+  function closeModal(){
+    modalBackdrop.classList.remove('open');
+    activeStopId = null;
+  }
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  modalBackdrop.addEventListener('click', (e) => { if(e.target === modalBackdrop) closeModal(); });
+
+  confirmBtn.addEventListener('click', async () => {
+    if(activeStopId == null) return;
+    const amt = parseFloat(amountInput.value);
+    const cat = catSelect.value;
+    if(!isNaN(amt) && amt > 0){
+      state.expenses[activeStopId] = { amount: amt, cat };
+    } else {
+      delete state.expenses[activeStopId];
+    }
+    if(!state.completed.includes(activeStopId)){
+      state.completed.push(activeStopId);
+    }
+    await persist();
+    renderAll();
+    closeModal();
+  });
+
+  undoBtn.addEventListener('click', async () => {
+    if(activeStopId == null) return;
+    state.completed = state.completed.filter(id => id !== activeStopId);
+    await persist();
+    renderAll();
+    closeModal();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    if(!confirm('確定要重設所有打卡進度與花費紀錄嗎？')) return;
+    state = { completed: [], expenses: {} };
+    await persist();
+    renderAll();
+  });
+
+  // ===== Map =====
+  let map, markers = {};
+  function initMap(){
+    map = L.map('map', { scrollWheelZoom:false }).setView([22.999, 120.205], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    STOPS.forEach(s => {
+      const icon = L.divIcon({
+        className: 'num-marker pending',
+        html: s.id,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+      });
+
+      const marker = L.marker([s.lat, s.lng], { icon: icon }).addTo(map);
+      
+      marker.bindPopup(`
+        <div style="text-align:center;">
+          <b>${s.id}. ${s.icon} ${s.name}</b><br><span style="color:#7a7160;">${s.meta}</span><br>
+          <a href="${s.nav}" target="_blank" style="display:inline-block; margin-top:8px; background:#D8552A; color:#fff; padding:6px 14px; border-radius:999px; text-decoration:none; font-weight:bold;">🧭 導航</a>
+        </div>
+      `);
+      // 這裡已經將原本點擊呼叫 openModal 的程式碼刪除了
+      
+      markers[s.id] = marker;
+    });
+  }
+
+  function renderMap(){
+    STOPS.forEach(s => {
+      const status = statusOf(s.id);
+      if(markers[s.id]) {
+        const size = status === 'current' ? 34 : 26;
+        const anchor = size / 2;
+        const bgClass = status; 
+
+        const newIcon = L.divIcon({
+          className: `num-marker ${bgClass}`,
+          html: s.id,
+          iconSize: [size, size],
+          iconAnchor: [anchor, anchor]
+        });
+
+        markers[s.id].setIcon(newIcon);
+
+        if (status === 'current') {
+          markers[s.id].setZIndexOffset(1000);
+        } else {
+          markers[s.id].setZIndexOffset(0);
+        }
+      }
+    });
+  }
+
+  // ===== Expenses =====
+  function renderExpenses(){
+    const total = document.getElementById('totalAmount');
+    const list = document.getElementById('expenseList');
+    const catBars = document.getElementById('catBars');
+
+    let sum = 0;
+    const byCat = {};
+    STOPS.forEach(s => {
+      const e = state.expenses[s.id];
+      if(e){
+        sum += e.amount;
+        byCat[e.cat] = (byCat[e.cat] || 0) + e.amount;
+      }
+    });
+    total.textContent = '$' + sum.toLocaleString();
+
+    catBars.innerHTML = '';
+    const cats = Object.keys(byCat);
+    if(cats.length === 0){
+      catBars.innerHTML = '<div class="expense-empty">還沒有花費紀錄，打卡時輸入金額就會統計在這裡。</div>';
+    } else {
+      cats.sort((a,b) => byCat[b] - byCat[a]).forEach(cat => {
+        const pct = Math.round((byCat[cat] / sum) * 100);
+        const row = document.createElement('div');
+        row.className = 'cat-bar-row';
+        row.innerHTML = `
+          <div class="cat-top"><span>${cat}</span><span>$${byCat[cat].toLocaleString()}（${pct}%）</span></div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;"></div></div>
+        `;
+        catBars.appendChild(row);
+      });
+    }
+
+    list.innerHTML = '';
+    const entries = STOPS.filter(s => state.expenses[s.id]);
+    if(entries.length === 0){
+      list.innerHTML = '<div class="expense-empty">尚無明細</div>';
+    } else {
+      entries.forEach(s => {
+        const e = state.expenses[s.id];
+        const item = document.createElement('div');
+        item.className = 'expense-item';
+        item.innerHTML = `
+          <span class="name">${s.icon} ${s.name} <span class="cat-chip">${e.cat}</span></span>
+          <span class="amt">$${e.amount.toLocaleString()}</span>
+        `;
+        list.appendChild(item);
+      });
+    }
+  }
+
+  function renderAll(){
+    renderTrail();
+    renderMap();
+    renderExpenses();
+  }
+
+  // ===== Persistence =====
+  async function persist(){
+    if(!storageReady) return;
+    try{
+      if(window.storage && window.storage.set) {
+        await window.storage.set('tainan-trip-progress', JSON.stringify(state), false);
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+    }catch(err){
+      console.error('Storage save failed', err);
+    }
+  }
+
+  async function loadState(){
+    try{
+      let resultStr = null;
+      if(window.storage && window.storage.get) {
+        const result = await window.storage.get('tainan-trip-progress', false);
+        if(result && result.value) resultStr = result.value;
+      } else {
+        resultStr = localStorage.getItem(STORAGE_KEY);
+      }
+
+      if(resultStr){
+        const parsed = JSON.parse(resultStr);
+        if(parsed && Array.isArray(parsed.completed)) state = parsed;
+      }
+    }catch(err){
+    }
+    storageReady = true;
+  }
+
+  (async function init(){
+    initMap();
+    await loadState();
+    renderAll();
+  })();
+
+})();
+</script>
+</body>
+</html>
