@@ -338,7 +338,7 @@
     border:1px solid var(--line);
     box-shadow:var(--paper-shadow);
     height:460px;
-    z-index: 10; /* 確保地圖層級正常 */
+    z-index: 10;
   }
   #map{height:100%; width:100%; background:#e5ded0; z-index: 1;}
   .map-legend{
@@ -352,7 +352,7 @@
   .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
   .leaflet-popup-content{font-family:'Noto Sans TC', sans-serif; font-size:13px; margin: 10px 14px;}
 
-  /* 自訂地圖數字標籤 (取代原本的圈圈) */
+  /* 自訂地圖數字標籤 */
   .num-marker {
     display: flex;
     align-items: center;
@@ -556,10 +556,10 @@
     { id:10, name:"台南花園夜市", icon:"🎪", lat:23.0068, lng:120.1969,
       meta:"騎機車約 6 分鐘", note:"晚間重頭戲，體驗南部大型夜市的豐富小吃與熱鬧氛圍。", cat:"餐飲",
       nav:"https://www.google.com/maps/dir/?api=1&destination=台南花園夜市" },
-    { id:11, name:"古巷速客達租車（還車）", icon:"🔁", lat:22.9998, lng:120.2103,
+    { id:11, name:"古巷速客達租車（還車）", icon:"🔁", lat:22.9996, lng:120.2106,
       meta:"騎機車約 5 分鐘", note:"結束一整天的市區行程，將機車騎回原處歸還。", cat:"租車",
       nav:"https://www.google.com/maps/dir/?api=1&destination=古巷速客達租車" },
-    { id:12, name:"台南轉運站（返程）", icon:"🏁", lat:22.9973, lng:120.2131,
+    { id:12, name:"台南轉運站（返程）", icon:"🏁", lat:22.9971, lng:120.2134,
       meta:"步行約 10 分鐘", note:"搭乘客運返回台中，為這趟旅程畫下完美句點。", cat:"交通",
       nav:"https://www.google.com/maps/dir/?api=1&destination=台南轉運站" },
   ];
@@ -587,8 +587,17 @@
 
   let activeStopId = null;
 
+  // 判斷關卡是否顯示：11 和 12 必須在打卡完 3 和 4 之後才會出現
+  function isStopVisible(id) {
+    if (id === 11 || id === 12) {
+      return state.completed.includes(3) && state.completed.includes(4);
+    }
+    return true;
+  }
+
   function currentStageId(){
     for(const s of STOPS){
+      if(!isStopVisible(s.id)) continue;
       if(!state.completed.includes(s.id)) return s.id;
     }
     return null; 
@@ -602,9 +611,14 @@
 
   function renderTrail(){
     trailEl.innerHTML = '';
-    STOPS.forEach((s, idx) => {
+    let visibleIdx = 0; // 用來計算左右排版的索引
+    
+    STOPS.forEach((s) => {
+      // 隱藏的關卡就不渲染到清單上
+      if (!isStopVisible(s.id)) return;
+
       const status = statusOf(s.id);
-      const side = idx % 2 === 0 ? '' : 'right';
+      const side = visibleIdx % 2 === 0 ? '' : 'right';
       const wrap = document.createElement('div');
       wrap.className = `stop ${side} ${status}`;
       
@@ -623,10 +637,12 @@
           <div class="stop-note">${s.note}</div>
         </div>
       `;
-      // 清單卡片依然保留點擊開啟大視窗打卡的功能
       wrap.addEventListener('click', () => openModal(s.id));
       trailEl.appendChild(wrap);
+      
+      visibleIdx++;
     });
+    
     const pct = Math.round((state.completed.length / STOPS.length) * 100);
     progressBar.style.width = pct + '%';
     progressCount.textContent = state.completed.length;
@@ -721,7 +737,7 @@
         iconAnchor: [13, 13]
       });
 
-      const marker = L.marker([s.lat, s.lng], { icon: icon }).addTo(map);
+      const marker = L.marker([s.lat, s.lng], { icon: icon });
       
       marker.bindPopup(`
         <div style="text-align:center;">
@@ -729,7 +745,6 @@
           <a href="${s.nav}" target="_blank" style="display:inline-block; margin-top:8px; background:#D8552A; color:#fff; padding:6px 14px; border-radius:999px; text-decoration:none; font-weight:bold;">🧭 導航</a>
         </div>
       `);
-      // 這裡已經將原本點擊呼叫 openModal 的程式碼刪除了
       
       markers[s.id] = marker;
     });
@@ -737,8 +752,20 @@
 
   function renderMap(){
     STOPS.forEach(s => {
-      const status = statusOf(s.id);
       if(markers[s.id]) {
+        // 控制地圖上的 Marker 是否顯示
+        if (!isStopVisible(s.id)) {
+          if (map.hasLayer(markers[s.id])) {
+            map.removeLayer(markers[s.id]);
+          }
+          return;
+        } else {
+          if (!map.hasLayer(markers[s.id])) {
+            markers[s.id].addTo(map);
+          }
+        }
+
+        const status = statusOf(s.id);
         const size = status === 'current' ? 34 : 26;
         const anchor = size / 2;
         const bgClass = status; 
