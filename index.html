@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>台南一路吃</title>
+<title>行程集章之旅</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<!-- 共用行程資料要用到 Firebase（如果還沒設定，網站仍可在單一裝置上使用） -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --paper: #F3EAD9;
@@ -46,11 +49,93 @@
   }
   a{color:inherit;}
   button{font-family:inherit;}
+  input,select,textarea{font-family:inherit;}
+
+  /* ===== GATE (建立/加入行程) ===== */
+  .gate-shell{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:40px 20px;
+    background:
+      radial-gradient(circle at 15% 8%, rgba(216,85,42,0.10), transparent 40%),
+      radial-gradient(circle at 90% 4%, rgba(63,108,93,0.14), transparent 45%),
+      linear-gradient(180deg, var(--night) 0%, var(--night-2) 100%);
+  }
+  .gate-card{
+    width:100%;
+    max-width:460px;
+    background:var(--paper);
+    border-radius:22px;
+    padding:36px 30px;
+    box-shadow:0 24px 70px rgba(0,0,0,0.35);
+    border:1px solid var(--line);
+  }
+  .gate-eyebrow{
+    font-size:12px; letter-spacing:0.28em; color:var(--jade); font-weight:700;
+    display:block; text-align:center; margin-bottom:6px;
+  }
+  .gate-card h1{
+    text-align:center; font-size:26px; margin:0 0 6px;
+  }
+  .gate-card p.gate-sub{
+    text-align:center; font-size:13.5px; color:#5b5347; margin:0 0 22px;
+  }
+  .gate-tabs{
+    display:flex; background:var(--paper-2); border-radius:999px; padding:4px; margin-bottom:22px;
+  }
+  .gate-tab{
+    flex:1; border:none; background:none; padding:10px 8px; border-radius:999px;
+    font-weight:700; font-size:13.5px; color:#7a7160; cursor:pointer; transition:all .15s ease;
+  }
+  .gate-tab.active{background:var(--night); color:var(--gold);}
+  .gate-pane{display:none;}
+  .gate-pane.active{display:block;}
+  .field-block{margin-bottom:14px;}
+  .field-block label{display:block; font-size:12.5px; font-weight:700; color:var(--night); margin-bottom:6px;}
+  .field-block input, .field-block textarea{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:#fff; font-size:14.5px;
+  }
+  .field-hint{font-size:11.5px; color:#8a8065; margin-top:4px;}
+  .code-input{text-transform:uppercase; letter-spacing:0.15em; font-weight:700; text-align:center;}
+  .gate-resume{
+    margin-top:16px; padding:12px 14px; background:#FBF6EB; border:1px dashed var(--line); border-radius:12px;
+    font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .gate-resume button{background:var(--jade); color:#fff; border:none; border-radius:999px; padding:7px 14px; font-size:12.5px; font-weight:700; cursor:pointer;}
+  .fb-banner{
+    margin-top:20px; font-size:12px; color:#8a5a3a; background:rgba(216,85,42,0.10);
+    border:1px solid rgba(216,85,42,0.3); border-radius:12px; padding:10px 12px; line-height:1.55;
+  }
+  .fb-banner summary{cursor:pointer; font-weight:700; color:var(--lantern-2);}
+  .fb-banner ol{margin:8px 0 0; padding-left:18px;}
+  .fb-banner code{background:rgba(36,32,26,0.08); padding:1px 5px; border-radius:5px;}
+  .gate-error{color:var(--lantern-2); font-size:12.5px; margin-top:6px; min-height:16px;}
+
+  /* ===== TOP BAR ===== */
+  .topbar{
+    background:var(--night); color:var(--paper);
+    padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  .topbar .tb-left{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .topbar .tb-title{font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px; color:#F7EFDD;}
+  .code-chip{
+    background:rgba(201,154,63,0.18); border:1px solid rgba(201,154,63,0.5); color:var(--gold);
+    padding:4px 12px; border-radius:999px; font-size:12.5px; letter-spacing:0.1em; font-weight:700;
+  }
+  .tb-btn{
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18); color:var(--paper);
+    padding:7px 13px; border-radius:999px; font-size:12.5px; font-weight:700; cursor:pointer;
+  }
+  .tb-btn:hover{background:rgba(255,255,255,0.16);}
+  .tb-btn.primary{background:var(--lantern); border-color:var(--lantern);}
+  .tb-right{display:flex; gap:8px; flex-wrap:wrap;}
 
   /* ===== HERO ===== */
   .hero{
     position:relative;
-    padding:64px 20px 46px;
+    padding:44px 20px 40px;
     text-align:center;
     background:
       linear-gradient(180deg, var(--night) 0%, var(--night-2) 62%, transparent 100%);
@@ -78,7 +163,7 @@
     position:relative;
   }
   .hero h1{
-    font-size:clamp(32px, 6vw, 52px);
+    font-size:clamp(28px, 6vw, 46px);
     margin:0 0 10px;
     font-weight:900;
     color:#F7EFDD;
@@ -147,6 +232,44 @@
     margin:0 auto;
   }
 
+  /* ===== EDITOR PANEL ===== */
+  .editor-wrap{
+    background:#FBF6EB; border:1px solid var(--line); border-radius:20px; padding:24px 22px; box-shadow:var(--paper-shadow);
+  }
+  .editor-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;}
+  @media (max-width:640px){.editor-grid{grid-template-columns:1fr;}}
+  .cat-chips{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 10px;}
+  .cat-chip-tag{
+    background:var(--paper-2); border:1px solid var(--line); border-radius:999px; padding:5px 10px 5px 12px;
+    font-size:12.5px; display:flex; align-items:center; gap:6px;
+  }
+  .cat-chip-tag button{border:none; background:none; color:var(--lantern-2); cursor:pointer; font-weight:700; padding:0;}
+  .cat-add-row{display:flex; gap:8px;}
+  .cat-add-row input{flex:1;}
+  .btn-small{
+    border:none; border-radius:999px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer;
+  }
+  .btn-small.jade{background:var(--jade); color:#fff;}
+  .btn-small.gold{background:var(--gold); color:#2b2210;}
+  .stop-edit-list{margin-top:6px;}
+  .stop-edit-row{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; background:#fff; border:1px solid var(--line);
+    border-radius:12px; margin-bottom:8px;
+  }
+  .stop-edit-row .sr-icon{font-size:18px;}
+  .stop-edit-row .sr-name{flex:1; font-weight:700; font-size:14px;}
+  .stop-edit-row .sr-cat{font-size:11px; color:var(--jade); border:1px solid var(--jade); padding:2px 8px; border-radius:999px;}
+  .sr-actions{display:flex; gap:4px;}
+  .sr-actions button{
+    border:none; background:var(--paper-2); border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:13px;
+  }
+  .sr-actions button.danger{color:var(--lantern-2);}
+  .add-stop-btn{
+    width:100%; margin-top:12px; padding:12px; border-radius:12px; border:2px dashed var(--jade); background:transparent;
+    color:var(--jade); font-weight:700; cursor:pointer; font-size:14px;
+  }
+  .empty-state{text-align:center; color:#8a8065; font-size:13.5px; padding:24px 10px;}
+
   /* ===== TRAIL / LEVELS ===== */
   .trail{
     position:relative;
@@ -181,7 +304,7 @@
     transition:transform .18s ease, box-shadow .18s ease;
   }
   .stop-card:hover{transform:translateY(-2px);}
-  
+
   .stop-num{
     position:absolute;
     top:50%;
@@ -209,11 +332,11 @@
   .stop-icon{font-size:22px;}
   .stop-title{font-family:'Noto Serif TC', serif; font-weight:700; font-size:17px; flex:1;}
   .stop-status{font-size:11px; padding:3px 9px; border-radius:999px; font-weight:700; letter-spacing:0.04em; white-space:nowrap;}
-  
+
   .stop-status.pending{background:#e6ddc9; color:#8a8065;}
   .stop-status.current{background:var(--lantern); color:#fff;}
   .stop-status.done{background:var(--jade); color:#fff;}
-  
+
   .stop-meta{font-size:12.5px; color:#7a7160; margin-bottom:6px;}
   .stop-note{font-size:13px; color:#4a453a;}
   .stamp{
@@ -256,6 +379,7 @@
     max-height:90vh;
     overflow-y:auto;
   }
+  .modal.wide{max-width:520px;}
   .modal h3{margin:0 0 4px; font-size:21px;}
   .modal .modal-meta{font-size:12.5px; color:#7a7160; margin-bottom:14px;}
   .modal .modal-note{font-size:13.5px; color:#4a453a; margin-bottom:16px;}
@@ -264,7 +388,6 @@
     background:none; border:none; font-size:20px; cursor:pointer; color:#8a8065;
   }
 
-  /* Modal 導航與菜單樣式 */
   .menu-box {
     background: #FBF6EB;
     padding: 14px 16px;
@@ -331,6 +454,22 @@
     padding:4px 10px; border-radius:999px; margin-bottom:14px;
   }
 
+  /* stop editor modal fields */
+  .row-2{display:grid; grid-template-columns:1fr 2fr; gap:10px;}
+  .search-row{display:flex; gap:8px;}
+  .search-results{margin-top:6px; max-height:140px; overflow-y:auto;}
+  .search-result-item{
+    padding:8px 10px; background:#fff; border:1px solid var(--line); border-radius:8px; font-size:12.5px;
+    margin-bottom:6px; cursor:pointer;
+  }
+  .search-result-item:hover{background:var(--paper-2);}
+  .mini-map{height:180px; border-radius:12px; overflow:hidden; border:1px solid var(--line); margin:10px 0;}
+  .latlng-readout{font-size:11.5px; color:#7a7160; margin-bottom:10px;}
+  .unlock-list{max-height:120px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:#fff;}
+  .unlock-item{font-size:13px; display:flex; align-items:center; gap:8px; padding:4px 0;}
+  .modal-actions{display:flex; gap:10px; margin-top:6px;}
+  .modal-actions .btn{width:auto; flex:1;}
+
   /* ===== MAP ===== */
   .map-shell{
     border-radius:20px;
@@ -352,7 +491,6 @@
   .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
   .leaflet-popup-content{font-family:'Noto Sans TC', sans-serif; font-size:13px; margin: 10px 14px;}
 
-  /* 自訂地圖數字標籤 */
   .num-marker {
     display: flex;
     align-items: center;
@@ -368,11 +506,11 @@
   }
   .num-marker.pending { background: #9a9384; }
   .num-marker.done { background: var(--jade); }
-  .num-marker.current { 
-    background: var(--lantern); 
-    font-size: 15px; 
-    border-width: 3px; 
-    box-shadow: 0 4px 10px rgba(216,85,42,0.5); 
+  .num-marker.current {
+    background: var(--lantern);
+    font-size: 15px;
+    border-width: 3px;
+    box-shadow: 0 4px 10px rgba(216,85,42,0.5);
   }
 
   /* ===== EXPENSES ===== */
@@ -425,66 +563,182 @@
     .stop-card{width:100%;}
     .stop-num{left:24px; transform:translate(-50%,-50%);}
     .map-shell{height:380px;}
+    .row-2{grid-template-columns:1fr;}
   }
 </style>
 </head>
 <body class="paper-texture">
 
-  <div class="hero">
-    <span class="hero-eyebrow">台南一日遊</span>
-    <h1>一路吃吃喝喝就對了</h1>
-    <p class="sub">從台中出發，一站一站吃了他，順手記下花了多少錢。</p>
-    <div class="progress-wrap">
-      <div class="progress-bar-outer"><div class="progress-bar-inner" id="progressBar"></div></div>
-      <div class="progress-label">已蓋 <b id="progressCount">0</b> / 12 枚印章</div>
+  <!-- ===================== 建立 / 加入行程 ===================== -->
+  <div class="gate-shell" id="gateScreen">
+    <div class="gate-card">
+      <span class="gate-eyebrow">TRIP PLANNER · 行程規劃</span>
+      <h1>一起規劃這趟旅程</h1>
+      <p class="gate-sub">建立行程後會得到一組行程代碼，把代碼分享給朋友，大家就能一起打卡、記錄花費。</p>
+
+      <div class="gate-tabs">
+        <button class="gate-tab active" id="tabCreate">建立新行程</button>
+        <button class="gate-tab" id="tabJoin">加入行程</button>
+      </div>
+
+      <div class="gate-pane active" id="paneCreate">
+        <div class="field-block">
+          <label>行程名稱</label>
+          <input type="text" id="createTitle" placeholder="例如：台南一路吃">
+        </div>
+        <div class="field-block">
+          <label>副標題（選填）</label>
+          <input type="text" id="createSubtitle" placeholder="例如：從台中出發，一站一站吃過去">
+        </div>
+        <button class="btn btn-primary" id="createBtn">建立行程並取得代碼</button>
+        <div class="gate-error" id="createError"></div>
+      </div>
+
+      <div class="gate-pane" id="paneJoin">
+        <div class="field-block">
+          <label>行程代碼</label>
+          <input type="text" id="joinCode" class="code-input" placeholder="例如 K7XQ2M" maxlength="8">
+          <div class="field-hint">跟朋友要行程代碼，或點擊他傳給你的連結。</div>
+        </div>
+        <button class="btn btn-primary" id="joinBtn">加入行程</button>
+        <div class="gate-error" id="joinError"></div>
+      </div>
+
+      <div class="gate-resume" id="gateResume" style="display:none;">
+        <span>上次瀏覽的行程：<b id="resumeCode"></b></span>
+        <button id="resumeBtn">繼續</button>
+      </div>
+
+      <details class="fb-banner" id="fbBanner">
+        <summary id="fbBannerTitle">⚠️ 尚未連接資料庫，目前僅能在這台裝置上使用</summary>
+        <div style="margin-top:8px;">
+          要讓朋友輸入代碼後即時看到同一份行程（打卡進度、花費都同步），需要一個免費的 Firebase 專案來存放共用資料：
+          <ol>
+            <li>到 <code>firebase.google.com</code> 建立一個新專案（免費方案即可）。</li>
+            <li>在專案中新增一個「Web app」，把它給你的 <code>firebaseConfig</code> 設定值複製下來。</li>
+            <li>啟用左側選單的 <code>Firestore Database</code>，選擇「以測試模式啟動」建立資料庫。</li>
+            <li>打開這個檔案，找到最上方 <code>FIREBASE_CONFIG</code> 的地方，貼上你的設定值。</li>
+            <li>建議到 Firestore 的「規則」分頁，把規則改成只允許 <code>trips</code> 這個集合被讀寫，例如：
+              <br><code>match /trips/{code} { allow read, write: if true; }</code>
+              （因為沒有登入機制，知道代碼的人都能編輯，請不要把代碼公開分享給不信任的人）。
+            </li>
+            <li>存檔後重新上傳／部署到 GitHub Pages，就可以真正跟朋友共用行程了。</li>
+          </ol>
+        </div>
+      </details>
     </div>
   </div>
 
-  <section>
-    <div class="section-head">
-      <span class="tag">ROUTE MAP · 位置地圖</span>
-      <h2>踩點地圖</h2>
-      <p>灰圈是待前往、紅圈放大是目前的下一站、綠圈是已經去過的地方。點擊可查看導航。</p>
-    </div>
-    <div class="map-shell"><div id="map"></div></div>
-    <div class="map-legend">
-      <span><i class="dot" style="background:#9a9384;"></i>待前往</span>
-      <span><i class="dot" style="background:#D8552A; transform:scale(1.3);"></i>📍 下一站</span>
-      <span><i class="dot" style="background:#3F6C5D;"></i>已完成</span>
-    </div>
-  </section>
+  <!-- ===================== 主要行程內容 ===================== -->
+  <div id="appShell" style="display:none;">
 
-  <section>
-    <div class="section-head">
-      <span class="tag">踩點地圖</span>
-      <h2>一路吃到花園夜市</h2>
-      <p>隨時點擊下方任一關卡查看詳細菜單，吃完他後，地圖會自動為你標示下一站的目標喔！</p>
-    </div>
-    <div class="trail" id="trail"></div>
-  </section>
-
-  <section>
-    <div class="section-head">
-      <span class="tag">EXPENSE Ledger · 花費帳本</span>
-      <h2>這趟旅程花了多少錢</h2>
-      <p>每打卡一關輸入花費，這裡會自動幫你統計總額與各類別佔比。</p>
-    </div>
-    <div class="expense-wrap">
-      <div class="expense-total">
-        <span class="label">目前總花費</span>
-        <span class="value" id="totalAmount">$0</span>
+    <div class="topbar">
+      <div class="tb-left">
+        <span class="tb-title" id="tbTitle">我的行程</span>
+        <span class="code-chip" id="tbCode">------</span>
       </div>
-      <div class="cat-bars" id="catBars"></div>
-      <div class="expense-list" id="expenseList"></div>
+      <div class="tb-right">
+        <button class="tb-btn" id="copyCodeBtn">📋 複製代碼</button>
+        <button class="tb-btn" id="copyLinkBtn">🔗 複製邀請連結</button>
+        <button class="tb-btn primary" id="toggleEditorBtn">✏️ 編輯行程</button>
+        <button class="tb-btn" id="leaveTripBtn">↩️ 離開行程</button>
+      </div>
     </div>
-  </section>
 
-  <footer>
-    台南美食集章之旅 · 資料僅供行程參考，實際營業狀況請以店家公告為準
-    <br>
-    <button class="reset-btn" id="resetBtn">重設所有進度</button>
-  </footer>
+    <div class="hero">
+      <span class="hero-eyebrow" id="heroEyebrow">TRIP · 行程</span>
+      <h1 id="heroTitle">我的行程</h1>
+      <p class="sub" id="heroSub">規劃你的行程，一站一站打卡，順手記下花了多少錢。</p>
+      <div class="progress-wrap">
+        <div class="progress-bar-outer"><div class="progress-bar-inner" id="progressBar"></div></div>
+        <div class="progress-label">已蓋 <b id="progressCount">0</b> / <span id="progressTotal">0</span> 枚印章</div>
+      </div>
+    </div>
 
+    <section id="editorSection" style="display:none;">
+      <div class="section-head">
+        <span class="tag">EDIT · 編輯行程</span>
+        <h2>規劃你的站點</h2>
+        <p>新增、編輯、排序站點，也可以在這裡調整行程名稱與分類。編輯後所有輸入代碼的朋友都會同步看到。</p>
+      </div>
+      <div class="editor-wrap">
+        <div class="editor-grid">
+          <div class="field-block">
+            <label>行程名稱</label>
+            <input type="text" id="settingsTitle">
+          </div>
+          <div class="field-block">
+            <label>副標題</label>
+            <input type="text" id="settingsSubtitle">
+          </div>
+        </div>
+        <button class="btn-small jade" id="saveSettingsBtn">儲存行程設定</button>
+
+        <div style="margin-top:22px;">
+          <label class="field-label">花費 / 站點分類</label>
+          <div class="cat-chips" id="catChips"></div>
+          <div class="cat-add-row">
+            <input type="text" id="newCatInput" placeholder="新增分類，例如：住宿">
+            <button class="btn-small gold" id="addCatBtn">新增</button>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;">
+          <label class="field-label">站點清單（<span id="stopCountLabel">0</span> 站）</label>
+          <div class="stop-edit-list" id="stopEditList"></div>
+          <button class="add-stop-btn" id="addStopBtn">＋ 新增站點</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <span class="tag">ROUTE MAP · 位置地圖</span>
+        <h2>踩點地圖</h2>
+        <p>灰圈是待前往、紅圈放大是目前的下一站、綠圈是已經去過的地方。點擊可查看導航。</p>
+      </div>
+      <div class="map-shell"><div id="map"></div></div>
+      <div class="map-legend">
+        <span><i class="dot" style="background:#9a9384;"></i>待前往</span>
+        <span><i class="dot" style="background:#D8552A; transform:scale(1.3);"></i>📍 下一站</span>
+        <span><i class="dot" style="background:#3F6C5D;"></i>已完成</span>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <span class="tag">踩點清單</span>
+        <h2 id="trailHeading">一站接著一站</h2>
+        <p>點擊下方任一關卡查看詳細內容，打卡後地圖會自動標示下一站的目標喔！</p>
+      </div>
+      <div class="trail" id="trail"></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <span class="tag">EXPENSE Ledger · 花費帳本</span>
+        <h2>這趟旅程花了多少錢</h2>
+        <p>每打卡一關輸入花費，這裡會自動幫你統計總額與各類別佔比（所有加入行程的人共用同一份帳本）。</p>
+      </div>
+      <div class="expense-wrap">
+        <div class="expense-total">
+          <span class="label">目前總花費</span>
+          <span class="value" id="totalAmount">$0</span>
+        </div>
+        <div class="cat-bars" id="catBars"></div>
+        <div class="expense-list" id="expenseList"></div>
+      </div>
+    </section>
+
+    <footer>
+      行程集章之旅 · 資料僅供行程參考，實際營業狀況請以店家公告為準
+      <br>
+      <button class="reset-btn" id="resetBtn">重設所有打卡進度與花費</button>
+    </footer>
+
+  </div>
+
+  <!-- ===================== 打卡 / 花費 Modal ===================== -->
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal">
       <button class="modal-close" id="modalClose">✕</button>
@@ -496,81 +750,216 @@
       <div id="modalMenuBox" class="menu-box" style="display:none;"></div>
       <div class="action-btns">
         <a href="#" target="_blank" class="btn-link btn-nav" id="modalNavBtn">🧭 導航去這</a>
-        <a href="#" target="_blank" class="btn-link btn-menu" id="modalMenuBtn" style="display:none;">📖 參考線上菜單</a>
+        <a href="#" target="_blank" class="btn-link btn-menu" id="modalMenuBtn" style="display:none;">📖 參考連結</a>
       </div>
 
       <label class="field-label">這一站花了多少錢？（沒花費可留空或填 0）</label>
       <div class="amount-row">
         <input type="number" min="0" id="amountInput" placeholder="輸入金額，例如 120">
-        <select class="cat-select" id="catSelect">
-          <option value="交通">交通</option>
-          <option value="租車">租車</option>
-          <option value="餐飲">餐飲</option>
-          <option value="其他">其他</option>
-        </select>
+        <select class="cat-select" id="catSelect"></select>
       </div>
       <button class="btn btn-primary" id="confirmBtn">蓋章打卡 ✓</button>
       <button class="btn btn-secondary" id="undoBtn" style="display:none;">取消打卡（重新解鎖）</button>
     </div>
   </div>
 
+  <!-- ===================== 站點編輯 Modal ===================== -->
+  <div class="modal-backdrop" id="stopModalBackdrop">
+    <div class="modal wide">
+      <button class="modal-close" id="stopModalClose">✕</button>
+      <h3 id="stopModalHeading">新增站點</h3>
+
+      <div class="row-2 field-block">
+        <div>
+          <label class="field-label">圖示</label>
+          <input type="text" id="stopIcon" placeholder="📍" maxlength="4">
+        </div>
+        <div>
+          <label class="field-label">站點名稱</label>
+          <input type="text" id="stopName" placeholder="例如：花園夜市">
+        </div>
+      </div>
+
+      <div class="row-2 field-block">
+        <div>
+          <label class="field-label">分類</label>
+          <select id="stopCat" class="cat-select" style="width:100%;"></select>
+        </div>
+        <div>
+          <label class="field-label">簡短說明（例如交通方式）</label>
+          <input type="text" id="stopMetaText" placeholder="例如：騎機車約 5 分鐘">
+        </div>
+      </div>
+
+      <div class="field-block">
+        <label class="field-label">詳細筆記</label>
+        <textarea id="stopNote" rows="2" placeholder="這一站的介紹或備註"></textarea>
+      </div>
+
+      <label class="field-label">位置</label>
+      <div class="search-row">
+        <input type="text" id="addressSearch" placeholder="輸入地址或店名搜尋">
+        <button class="btn-small jade" id="addressSearchBtn" type="button">🔍 搜尋</button>
+      </div>
+      <div class="search-results" id="addressResults"></div>
+      <div class="mini-map" id="stopEditMap"></div>
+      <div class="latlng-readout">目前座標：<span id="latlngReadout">尚未設定，點擊地圖或搜尋地址來設定位置</span>（也可以直接拖曳地圖上的圖釘）</div>
+
+      <div class="field-block">
+        <label class="field-label">參考資訊（會顯示在打卡視窗，可換行）</label>
+        <textarea id="stopMenu" rows="2" placeholder="例如推薦菜色、注意事項"></textarea>
+      </div>
+      <div class="field-block">
+        <label class="field-label">參考連結（選填，例如菜單網址）</label>
+        <input type="text" id="stopMenuLink" placeholder="https://...">
+      </div>
+
+      <div class="field-block">
+        <label class="field-label">要先完成哪些站點，這一站才會出現？（選填，不勾就一開始都看得到）</label>
+        <div class="unlock-list" id="unlockList"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="deleteStopBtn" style="display:none; color:var(--lantern-2); border-color:var(--lantern-2);">刪除這一站</button>
+        <button class="btn btn-primary" id="saveStopBtn">儲存站點</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 (function(){
 
-  const STOPS = [
-    { id:1, name:"目前位置（台中北區）", icon:"🏠", lat:24.1620, lng:120.6795,
-      meta:"準備出發", note:"整趟旅程的起點，確認好行李與駕照就可以出發囉。", cat:"其他",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=24.1620,120.6795" },
-    { id:2, name:"朝馬轉運站", icon:"🚌", lat:24.1691, lng:120.6376,
-      meta:"前往客運站", note:"依照購買的客運班次，至指定月台搭車前往台南。", cat:"交通",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=朝馬轉運站" },
-    { id:3, name:"台南轉運站", icon:"🚏", lat:22.9973, lng:120.2131,
-      meta:"客運抵達", note:"抵達台南的第一站，正式踏入府城。", cat:"交通",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=台南轉運站" },
-    { id:4, name:"古巷速客達租車", icon:"🛵", lat:22.9998, lng:120.2103,
-      meta:"步行約 10 分鐘", note:"網路評價推薦的租車行，辦理手續並領取機車。記得攜帶駕照。", cat:"租車",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=古巷速客達租車" },
-    { id:5, name:"溫爸鵝肉", icon:"🍗", lat:23.0068, lng:120.2039,
-      meta:"騎機車約 4 分鐘", note:"首站美食，每日限量賣完為止，建議留意線上點餐系統狀況。", cat:"餐飲",
-      menu:"🦆 招牌推薦：<br>• 鵝肉切盤 (限量)<br>• 鵝油拌飯<br>• 下水湯",
-      menuLink:"https://www.facebook.com/search/top?q=%E6%BA%AB%E7%88%B8%E9%B5%9D%E8%82%89",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=溫爸鵝肉+台南" },
-    { id:6, name:"阿棠牛肉湯", icon:"🍲", lat:22.9958, lng:120.1965,
-      meta:"騎機車約 6 分鐘", note:"品嚐台南最具代表性的溫體牛肉湯。", cat:"餐飲",
-      menu:"🐂 熱門餐點：<br>• 招牌溫體牛肉湯 $120~$230<br>• 高麗菜炒牛肉 $140<br>• 蒜頭牛肉湯 $170<br>• 麻油牛肉 $170",
-      menuLink:"https://www.ubereats.com/tw/store/%E9%98%BF%E5%A0%82%E7%89%9B%E8%82%89%E5%B0%88%E8%B3%A3-%E5%AE%89%E5%B9%B3%E5%BA%97/3dkY_nl4SyC_3t1SKRzjLw",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=阿棠牛肉湯" },
-    { id:7, name:"昔昔", icon:"🍙", lat:22.9962, lng:120.1997,
-      meta:"騎機車約 3 分鐘", note:"巷弄內的文青風格小店，享用餐後手作飯糰。", cat:"餐飲",
-      menu:"🍙 口味選擇：<br>• 明太子醬油漬蛋黃飯丸<br>• 鰹魚鬆醬油漬蛋黃飯丸<br>• 紫蘇梅 / 鹽昆布 / 鮪魚美乃滋",
-      menuLink:"https://www.ubereats.com/tw/store/%E6%98%94%E6%98%94-%E6%97%A5%E5%BC%8F%E6%89%8B%E4%BD%9C%E9%A3%AF%E4%B8%B8/Gkw0sEI2U_yFrXTDoAYDTw",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=昔昔+台南+飯糰" },
-    { id:8, name:"雙生綠豆沙牛奶", icon:"🥤", lat:22.9968, lng:120.2020,
-      meta:"騎機車約 3 分鐘", note:"排隊超人氣飲品，買杯冰涼綠豆沙解渴。", cat:"餐飲",
-      menu:"🥤 必點飲品：<br>• 綠豆沙牛奶 (招牌必喝)<br>• 綠豆沙<br>• 紅茶牛奶",
-      menuLink:"https://www.facebook.com/ShuansenBeverages/",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=雙生綠豆沙牛奶" },
-    { id:9, name:"神農街", icon:"🏮", lat:22.9975, lng:120.1998,
-      meta:"騎機車約 3 分鐘", note:"保留復古風情的台南老街，吃飽喝足後悠閒漫步。", cat:"其他",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=台南神農街" },
-    { id:10, name:"台南花園夜市", icon:"🎪", lat:23.0068, lng:120.1969,
-      meta:"騎機車約 6 分鐘", note:"晚間重頭戲，體驗南部大型夜市的豐富小吃與熱鬧氛圍。", cat:"餐飲",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=台南花園夜市" },
-    { id:11, name:"古巷速客達租車（還車）", icon:"🔁", lat:22.9996, lng:120.2106,
-      meta:"騎機車約 5 分鐘", note:"結束一整天的市區行程，將機車騎回原處歸還。", cat:"租車",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=古巷速客達租車" },
-    { id:12, name:"台南轉運站（返程）", icon:"🏁", lat:22.9971, lng:120.2134,
-      meta:"步行約 10 分鐘", note:"搭乘客運返回台中，為這趟旅程畫下完美句點。", cat:"交通",
-      nav:"https://www.google.com/maps/dir/?api=1&destination=台南轉運站" },
-  ];
+  // ============================================================
+  // 0. Firebase 設定（如果要跟朋友即時共用行程，請填入你自己 Firebase
+  //    專案的設定值；留空的話網站會自動改用「本機示範模式」，
+  //    此時行程只會存在目前這台裝置、這個瀏覽器裡）
+  // ============================================================
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyAZipzDlHsKWjuYARW7C9XTwjf2ZHK6i2I",
+    authDomain: "itinerary-planning-ee3bf.firebaseapp.com",
+    projectId: "itinerary-planning-ee3bf",
+    storageBucket: "itinerary-planning-ee3bf.firebasestorage.app",
+    messagingSenderId: "573565989449",
+    appId: "1:573565989449:web:1971a54231b0bc0ebf0598"
+  };
 
-  const STORAGE_KEY = "tainan-trip-progress";
-  let state = { completed: [], expenses: {} };
-  let storageReady = false;
+  let usingFirebase = false;
+  let db = null;
+  function initFirebase(){
+    if(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId){
+      try{
+        firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.firestore();
+        usingFirebase = true;
+      }catch(err){
+        console.error('Firebase 初始化失敗，改用本機示範模式', err);
+        usingFirebase = false;
+      }
+    }
+  }
+  initFirebase();
 
-  const trailEl = document.getElementById('trail');
+  // ============================================================
+  // 1. 儲存層：依照是否有設定 Firebase，自動切換「共用資料庫」或「本機儲存」
+  // ============================================================
+  const Store = {
+    async get(code){
+      if(usingFirebase){
+        const snap = await db.collection('trips').doc(code).get();
+        return snap.exists ? snap.data() : null;
+      }
+      const raw = localStorage.getItem('trip:' + code);
+      return raw ? JSON.parse(raw) : null;
+    },
+    async set(code, data){
+      if(usingFirebase){
+        await db.collection('trips').doc(code).set(data, { merge:true });
+      } else {
+        localStorage.setItem('trip:' + code, JSON.stringify(data));
+      }
+    },
+    subscribe(code, cb){
+      if(usingFirebase){
+        return db.collection('trips').doc(code).onSnapshot(snap => {
+          if(snap.exists) cb(snap.data());
+        }, err => console.error('同步失敗', err));
+      }
+      Store.get(code).then(data => { if(data) cb(data); });
+      return function(){};
+    }
+  };
+
+  // ============================================================
+  // 2. 行程狀態
+  // ============================================================
+  let trip = null;          // 目前載入的整份行程資料
+  let unsubscribe = null;
+  let editMode = false;
+  let activeStopId = null;  // 目前開啟打卡 Modal 的站點
+  let editingStopId = null; // 目前開啟編輯 Modal 的站點（null = 新增）
+
+  const DEFAULT_CATEGORIES = ['交通','餐飲','景點','住宿','其他'];
+
+  function genCode(){
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 不含容易看錯的 0/O/1/I
+    let out = '';
+    for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
+    return out;
+  }
+  function newStopId(){
+    return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  // ============================================================
+  // 3. DOM refs
+  // ============================================================
+  const gateScreen = document.getElementById('gateScreen');
+  const appShell = document.getElementById('appShell');
+
+  const tabCreate = document.getElementById('tabCreate');
+  const tabJoin = document.getElementById('tabJoin');
+  const paneCreate = document.getElementById('paneCreate');
+  const paneJoin = document.getElementById('paneJoin');
+  const createTitle = document.getElementById('createTitle');
+  const createSubtitle = document.getElementById('createSubtitle');
+  const createBtn = document.getElementById('createBtn');
+  const createError = document.getElementById('createError');
+  const joinCode = document.getElementById('joinCode');
+  const joinBtn = document.getElementById('joinBtn');
+  const joinError = document.getElementById('joinError');
+  const gateResume = document.getElementById('gateResume');
+  const resumeCode = document.getElementById('resumeCode');
+  const resumeBtn = document.getElementById('resumeBtn');
+  const fbBanner = document.getElementById('fbBanner');
+  const fbBannerTitle = document.getElementById('fbBannerTitle');
+
+  const tbTitle = document.getElementById('tbTitle');
+  const tbCode = document.getElementById('tbCode');
+  const copyCodeBtn = document.getElementById('copyCodeBtn');
+  const copyLinkBtn = document.getElementById('copyLinkBtn');
+  const toggleEditorBtn = document.getElementById('toggleEditorBtn');
+  const leaveTripBtn = document.getElementById('leaveTripBtn');
+
+  const heroEyebrow = document.getElementById('heroEyebrow');
+  const heroTitle = document.getElementById('heroTitle');
+  const heroSub = document.getElementById('heroSub');
   const progressBar = document.getElementById('progressBar');
   const progressCount = document.getElementById('progressCount');
+  const progressTotal = document.getElementById('progressTotal');
+
+  const editorSection = document.getElementById('editorSection');
+  const settingsTitle = document.getElementById('settingsTitle');
+  const settingsSubtitle = document.getElementById('settingsSubtitle');
+  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  const catChips = document.getElementById('catChips');
+  const newCatInput = document.getElementById('newCatInput');
+  const addCatBtn = document.getElementById('addCatBtn');
+  const stopEditList = document.getElementById('stopEditList');
+  const stopCountLabel = document.getElementById('stopCountLabel');
+  const addStopBtn = document.getElementById('addStopBtn');
+
+  const trailEl = document.getElementById('trail');
+
   const modalBackdrop = document.getElementById('modalBackdrop');
   const modalTitle = document.getElementById('modalTitle');
   const modalMeta = document.getElementById('modalMeta');
@@ -580,85 +969,229 @@
   const catSelect = document.getElementById('catSelect');
   const confirmBtn = document.getElementById('confirmBtn');
   const undoBtn = document.getElementById('undoBtn');
-
   const modalMenuBox = document.getElementById('modalMenuBox');
   const modalNavBtn = document.getElementById('modalNavBtn');
   const modalMenuBtn = document.getElementById('modalMenuBtn');
 
-  let activeStopId = null;
+  const stopModalBackdrop = document.getElementById('stopModalBackdrop');
+  const stopModalHeading = document.getElementById('stopModalHeading');
+  const stopIcon = document.getElementById('stopIcon');
+  const stopName = document.getElementById('stopName');
+  const stopCat = document.getElementById('stopCat');
+  const stopMetaText = document.getElementById('stopMetaText');
+  const stopNote = document.getElementById('stopNote');
+  const addressSearch = document.getElementById('addressSearch');
+  const addressSearchBtn = document.getElementById('addressSearchBtn');
+  const addressResults = document.getElementById('addressResults');
+  const latlngReadout = document.getElementById('latlngReadout');
+  const stopMenu = document.getElementById('stopMenu');
+  const stopMenuLink = document.getElementById('stopMenuLink');
+  const unlockList = document.getElementById('unlockList');
+  const deleteStopBtn = document.getElementById('deleteStopBtn');
+  const saveStopBtn = document.getElementById('saveStopBtn');
 
-  // 判斷關卡是否顯示：11 和 12 必須在打卡完 3 和 4 之後才會出現
-  function isStopVisible(id) {
-    if (id === 11 || id === 12) {
-      return state.completed.includes(3) && state.completed.includes(4);
+  let pendingLat = null, pendingLng = null;
+
+  // ============================================================
+  // 4. 建立 / 加入 / 離開行程
+  // ============================================================
+  tabCreate.addEventListener('click', () => {
+    tabCreate.classList.add('active'); tabJoin.classList.remove('active');
+    paneCreate.classList.add('active'); paneJoin.classList.remove('active');
+  });
+  tabJoin.addEventListener('click', () => {
+    tabJoin.classList.add('active'); tabCreate.classList.remove('active');
+    paneJoin.classList.add('active'); paneCreate.classList.remove('active');
+  });
+
+  createBtn.addEventListener('click', async () => {
+    createError.textContent = '';
+    const title = createTitle.value.trim() || '我的行程';
+    const subtitle = createSubtitle.value.trim();
+    const code = genCode();
+    const data = {
+      code, title, subtitle,
+      categories: DEFAULT_CATEGORIES.slice(),
+      stops: [],
+      completed: [],
+      expenses: {},
+      updatedAt: Date.now()
+    };
+    try{
+      await Store.set(code, data);
+      enterTrip(code);
+    }catch(err){
+      console.error(err);
+      createError.textContent = '建立失敗，請確認 Firebase 設定是否正確。';
     }
-    return true;
+  });
+
+  joinBtn.addEventListener('click', async () => {
+    joinError.textContent = '';
+    const code = joinCode.value.trim().toUpperCase();
+    if(!code){ joinError.textContent = '請輸入行程代碼'; return; }
+    try{
+      const data = await Store.get(code);
+      if(!data){ joinError.textContent = '找不到這個行程代碼，請確認是否輸入正確。'; return; }
+      enterTrip(code);
+    }catch(err){
+      console.error(err);
+      joinError.textContent = '加入失敗，請確認 Firebase 設定是否正確。';
+    }
+  });
+
+  resumeBtn.addEventListener('click', () => {
+    const code = localStorage.getItem('lastTripCode');
+    if(code) joinCodeAndEnter(code);
+  });
+
+  async function joinCodeAndEnter(code){
+    const data = await Store.get(code);
+    if(data) enterTrip(code);
   }
 
+  function enterTrip(code){
+    if(unsubscribe) unsubscribe();
+    localStorage.setItem('lastTripCode', code);
+    gateScreen.style.display = 'none';
+    appShell.style.display = 'block';
+    unsubscribe = Store.subscribe(code, data => {
+      data.code = code;
+      if(!data.categories) data.categories = DEFAULT_CATEGORIES.slice();
+      if(!data.stops) data.stops = [];
+      if(!data.completed) data.completed = [];
+      if(!data.expenses) data.expenses = {};
+      trip = data;
+      renderAll();
+    });
+    const url = new URL(location.href);
+    url.searchParams.set('trip', code);
+    history.replaceState(null, '', url.toString());
+  }
+
+  leaveTripBtn.addEventListener('click', () => {
+    if(unsubscribe) unsubscribe();
+    unsubscribe = null;
+    trip = null;
+    localStorage.removeItem('lastTripCode');
+    const url = new URL(location.href);
+    url.searchParams.delete('trip');
+    history.replaceState(null, '', url.toString());
+    appShell.style.display = 'none';
+    gateScreen.style.display = 'flex';
+  });
+
+  copyCodeBtn.addEventListener('click', () => copyText(trip.code, '已複製代碼'));
+  copyLinkBtn.addEventListener('click', () => {
+    const url = new URL(location.href);
+    url.searchParams.set('trip', trip.code);
+    copyText(url.toString(), '已複製邀請連結');
+  });
+  function copyText(text, msg){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(() => alert(msg)).catch(() => alert(text));
+    } else {
+      alert(text);
+    }
+  }
+
+  // ============================================================
+  // 5. 畫面切換：編輯模式
+  // ============================================================
+  toggleEditorBtn.addEventListener('click', () => {
+    editMode = !editMode;
+    editorSection.style.display = editMode ? 'block' : 'none';
+    toggleEditorBtn.textContent = editMode ? '👁️ 檢視行程' : '✏️ 編輯行程';
+    if(editMode) fillSettingsForm();
+  });
+
+  // ============================================================
+  // 6. Render：整合原本踩點/地圖/花費邏輯，改吃 trip.stops
+  // ============================================================
+  function isStopVisible(s){
+    if(!s.unlockAfter || !s.unlockAfter.length) return true;
+    return s.unlockAfter.every(id => trip.completed.includes(id));
+  }
   function currentStageId(){
-    for(const s of STOPS){
-      if(!isStopVisible(s.id)) continue;
-      if(!state.completed.includes(s.id)) return s.id;
+    for(const s of trip.stops){
+      if(!isStopVisible(s)) continue;
+      if(!trip.completed.includes(s.id)) return s.id;
     }
-    return null; 
+    return null;
   }
-
   function statusOf(id){
-    if(state.completed.includes(id)) return 'done';
+    if(trip.completed.includes(id)) return 'done';
     if(id === currentStageId()) return 'current';
     return 'pending';
+  }
+  function navUrl(s){
+    if(s.lat == null || s.lng == null) return '#';
+    return `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+  }
+
+  function renderAll(){
+    if(!trip) return;
+    tbTitle.textContent = trip.title;
+    tbCode.textContent = trip.code;
+    heroTitle.textContent = trip.title;
+    heroSub.textContent = trip.subtitle || '規劃你的行程，一站一站打卡，順手記下花了多少錢。';
+    heroEyebrow.textContent = trip.subtitle ? 'TRIP · 行程' : 'TRIP · 行程';
+    document.title = trip.title;
+
+    populateCategorySelects();
+    renderTrail();
+    renderMap();
+    renderExpenses();
+    if(editMode) renderEditorList();
   }
 
   function renderTrail(){
     trailEl.innerHTML = '';
-    let visibleIdx = 0; // 用來計算左右排版的索引
-    
-    STOPS.forEach((s) => {
-      // 隱藏的關卡就不渲染到清單上
-      if (!isStopVisible(s.id)) return;
-
+    const visible = trip.stops.filter(isStopVisible);
+    if(trip.stops.length === 0){
+      trailEl.innerHTML = '<div class="empty-state">這趟行程還沒有任何站點，點右上角「✏️ 編輯行程」開始新增吧！</div>';
+    }
+    visible.forEach((s, idx) => {
       const status = statusOf(s.id);
-      const side = visibleIdx % 2 === 0 ? '' : 'right';
+      const side = idx % 2 === 0 ? '' : 'right';
       const wrap = document.createElement('div');
       wrap.className = `stop ${side} ${status}`;
-      
       const statusLabel = status === 'done' ? '已蓋章' : (status === 'current' ? '📍 下一站' : '待前往');
-      
+
       wrap.innerHTML = `
-        <div class="stop-num">${s.id}</div>
+        <div class="stop-num">${idx+1}</div>
         <div class="stop-card">
-          ${status === 'done' ? `<div class="stamp">府城<br>已達</div>` : ''}
+          ${status === 'done' ? `<div class="stamp">✓<br>已達</div>` : ''}
           <div class="stop-top">
-            <span class="stop-icon">${s.icon}</span>
-            <span class="stop-title">${s.name}</span>
+            <span class="stop-icon">${escapeHtml(s.icon || '📍')}</span>
+            <span class="stop-title">${escapeHtml(s.name)}</span>
             <span class="stop-status ${status}">${statusLabel}</span>
           </div>
-          <div class="stop-meta">${s.meta}</div>
-          <div class="stop-note">${s.note}</div>
+          <div class="stop-meta">${escapeHtml(s.meta || '')}</div>
+          <div class="stop-note">${escapeHtml(s.note || '')}</div>
         </div>
       `;
       wrap.addEventListener('click', () => openModal(s.id));
       trailEl.appendChild(wrap);
-      
-      visibleIdx++;
     });
-    
-    const pct = Math.round((state.completed.length / STOPS.length) * 100);
+
+    const pct = trip.stops.length ? Math.round((trip.completed.length / trip.stops.length) * 100) : 0;
     progressBar.style.width = pct + '%';
-    progressCount.textContent = state.completed.length;
+    progressCount.textContent = trip.completed.length;
+    progressTotal.textContent = trip.stops.length;
   }
 
   function openModal(id){
     activeStopId = id;
-    const s = STOPS.find(x => x.id === id);
-    modalTitle.textContent = `${s.icon} ${s.name}`;
-    modalMeta.textContent = s.meta;
-    modalNote.textContent = s.note;
+    const s = trip.stops.find(x => x.id === id);
+    modalTitle.textContent = `${s.icon || '📍'} ${s.name}`;
+    modalMeta.textContent = s.meta || '';
+    modalNote.textContent = s.note || '';
 
-    modalNavBtn.href = s.nav;
+    modalNavBtn.href = navUrl(s);
     if(s.menu){
       modalMenuBox.style.display = 'block';
-      modalMenuBox.innerHTML = `<strong>📋 參考資訊：</strong><br>${s.menu}`;
+      modalMenuBox.innerHTML = `<strong>📋 參考資訊：</strong><br>${escapeHtml(s.menu).replace(/\n/g,'<br>')}`;
     } else {
       modalMenuBox.style.display = 'none';
     }
@@ -672,19 +1205,17 @@
     const status = statusOf(id);
     const done = status === 'done';
     modalDoneTag.innerHTML = done ? `<span class="modal-done-tag">已蓋章 ✓</span>` : '';
-    const existing = state.expenses[id];
+    const existing = trip.expenses[id];
     amountInput.value = existing ? existing.amount : '';
-    catSelect.value = existing ? existing.cat : s.cat;
+    catSelect.value = existing ? existing.cat : (s.cat || trip.categories[0]);
     confirmBtn.textContent = done ? '更新花費紀錄' : '蓋章打卡 ✓';
     undoBtn.style.display = done ? 'inline-flex' : 'none';
     modalBackdrop.classList.add('open');
   }
-
   function closeModal(){
     modalBackdrop.classList.remove('open');
     activeStopId = null;
   }
-
   document.getElementById('modalClose').addEventListener('click', closeModal);
   modalBackdrop.addEventListener('click', (e) => { if(e.target === modalBackdrop) closeModal(); });
 
@@ -692,103 +1223,90 @@
     if(activeStopId == null) return;
     const amt = parseFloat(amountInput.value);
     const cat = catSelect.value;
+    const completed = trip.completed.slice();
+    const expenses = Object.assign({}, trip.expenses);
     if(!isNaN(amt) && amt > 0){
-      state.expenses[activeStopId] = { amount: amt, cat };
+      expenses[activeStopId] = { amount: amt, cat };
     } else {
-      delete state.expenses[activeStopId];
+      delete expenses[activeStopId];
     }
-    if(!state.completed.includes(activeStopId)){
-      state.completed.push(activeStopId);
-    }
-    await persist();
-    renderAll();
+    if(!completed.includes(activeStopId)) completed.push(activeStopId);
+    await saveTrip({ completed, expenses });
     closeModal();
   });
 
   undoBtn.addEventListener('click', async () => {
     if(activeStopId == null) return;
-    state.completed = state.completed.filter(id => id !== activeStopId);
-    await persist();
-    renderAll();
+    const completed = trip.completed.filter(id => id !== activeStopId);
+    await saveTrip({ completed });
     closeModal();
   });
 
   document.getElementById('resetBtn').addEventListener('click', async () => {
-    if(!confirm('確定要重設所有打卡進度與花費紀錄嗎？')) return;
-    state = { completed: [], expenses: {} };
-    await persist();
-    renderAll();
+    if(!confirm('確定要重設所有打卡進度與花費紀錄嗎？（不會刪除站點設定）')) return;
+    await saveTrip({ completed: [], expenses: {} });
   });
 
-  // ===== Map =====
+  // ============================================================
+  // 7. 地圖
+  // ============================================================
   let map, markers = {};
   function initMap(){
-    map = L.map('map', { scrollWheelZoom:false }).setView([22.999, 120.205], 13);
+    map = L.map('map', { scrollWheelZoom:false }).setView([23.7, 121.0], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);
-
-    STOPS.forEach(s => {
-      const icon = L.divIcon({
-        className: 'num-marker pending',
-        html: s.id,
-        iconSize: [26, 26],
-        iconAnchor: [13, 13]
-      });
-
-      const marker = L.marker([s.lat, s.lng], { icon: icon });
-      
-      marker.bindPopup(`
-        <div style="text-align:center;">
-          <b>${s.id}. ${s.icon} ${s.name}</b><br><span style="color:#7a7160;">${s.meta}</span><br>
-          <a href="${s.nav}" target="_blank" style="display:inline-block; margin-top:8px; background:#D8552A; color:#fff; padding:6px 14px; border-radius:999px; text-decoration:none; font-weight:bold;">🧭 導航</a>
-        </div>
-      `);
-      
-      markers[s.id] = marker;
-    });
   }
 
   function renderMap(){
-    STOPS.forEach(s => {
-      if(markers[s.id]) {
-        // 控制地圖上的 Marker 是否顯示
-        if (!isStopVisible(s.id)) {
-          if (map.hasLayer(markers[s.id])) {
-            map.removeLayer(markers[s.id]);
-          }
-          return;
-        } else {
-          if (!map.hasLayer(markers[s.id])) {
-            markers[s.id].addTo(map);
-          }
-        }
-
-        const status = statusOf(s.id);
-        const size = status === 'current' ? 34 : 26;
-        const anchor = size / 2;
-        const bgClass = status; 
-
-        const newIcon = L.divIcon({
-          className: `num-marker ${bgClass}`,
-          html: s.id,
-          iconSize: [size, size],
-          iconAnchor: [anchor, anchor]
-        });
-
-        markers[s.id].setIcon(newIcon);
-
-        if (status === 'current') {
-          markers[s.id].setZIndexOffset(1000);
-        } else {
-          markers[s.id].setZIndexOffset(0);
-        }
+    if(!map) return;
+    const seen = new Set();
+    trip.stops.forEach(s => {
+      seen.add(s.id);
+      if(s.lat == null || s.lng == null) return;
+      const visible = isStopVisible(s);
+      if(!markers[s.id]){
+        const marker = L.marker([s.lat, s.lng]);
+        marker.bindPopup(`
+          <div style="text-align:center;">
+            <b>${escapeHtml(s.icon||'📍')} ${escapeHtml(s.name)}</b><br><span style="color:#7a7160;">${escapeHtml(s.meta||'')}</span><br>
+            <a href="${navUrl(s)}" target="_blank" style="display:inline-block; margin-top:8px; background:#D8552A; color:#fff; padding:6px 14px; border-radius:999px; text-decoration:none; font-weight:bold;">🧭 導航</a>
+          </div>
+        `);
+        markers[s.id] = marker;
+      } else {
+        markers[s.id].setLatLng([s.lat, s.lng]);
       }
+      const marker = markers[s.id];
+      if(!visible){
+        if(map.hasLayer(marker)) map.removeLayer(marker);
+        return;
+      }
+      const status = statusOf(s.id);
+      const size = status === 'current' ? 34 : 26;
+      const anchor = size/2;
+      const icon = L.divIcon({
+        className: `num-marker ${status}`,
+        html: trip.stops.filter(isStopVisible).findIndex(x=>x.id===s.id) + 1,
+        iconSize: [size, size],
+        iconAnchor: [anchor, anchor]
+      });
+      marker.setIcon(icon);
+      marker.setZIndexOffset(status === 'current' ? 1000 : 0);
+      if(!map.hasLayer(marker)) marker.addTo(map);
     });
+    // 移除已刪除站點的 marker
+    Object.keys(markers).forEach(id => {
+      if(!seen.has(id)){ map.removeLayer(markers[id]); delete markers[id]; }
+    });
+    const coords = trip.stops.filter(s => isStopVisible(s) && s.lat != null && s.lng != null).map(s => [s.lat, s.lng]);
+    if(coords.length) map.fitBounds(coords, { padding:[30,30], maxZoom:16 });
   }
 
-  // ===== Expenses =====
+  // ============================================================
+  // 8. 花費帳本
+  // ============================================================
   function renderExpenses(){
     const total = document.getElementById('totalAmount');
     const list = document.getElementById('expenseList');
@@ -796,8 +1314,8 @@
 
     let sum = 0;
     const byCat = {};
-    STOPS.forEach(s => {
-      const e = state.expenses[s.id];
+    trip.stops.forEach(s => {
+      const e = trip.expenses[s.id];
       if(e){
         sum += e.amount;
         byCat[e.cat] = (byCat[e.cat] || 0) + e.amount;
@@ -810,12 +1328,12 @@
     if(cats.length === 0){
       catBars.innerHTML = '<div class="expense-empty">還沒有花費紀錄，打卡時輸入金額就會統計在這裡。</div>';
     } else {
-      cats.sort((a,b) => byCat[b] - byCat[a]).forEach(cat => {
-        const pct = Math.round((byCat[cat] / sum) * 100);
+      cats.sort((a,b) => byCat[b]-byCat[a]).forEach(cat => {
+        const pct = Math.round((byCat[cat]/sum)*100);
         const row = document.createElement('div');
         row.className = 'cat-bar-row';
         row.innerHTML = `
-          <div class="cat-top"><span>${cat}</span><span>$${byCat[cat].toLocaleString()}（${pct}%）</span></div>
+          <div class="cat-top"><span>${escapeHtml(cat)}</span><span>$${byCat[cat].toLocaleString()}（${pct}%）</span></div>
           <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;"></div></div>
         `;
         catBars.appendChild(row);
@@ -823,16 +1341,16 @@
     }
 
     list.innerHTML = '';
-    const entries = STOPS.filter(s => state.expenses[s.id]);
+    const entries = trip.stops.filter(s => trip.expenses[s.id]);
     if(entries.length === 0){
       list.innerHTML = '<div class="expense-empty">尚無明細</div>';
     } else {
       entries.forEach(s => {
-        const e = state.expenses[s.id];
+        const e = trip.expenses[s.id];
         const item = document.createElement('div');
         item.className = 'expense-item';
         item.innerHTML = `
-          <span class="name">${s.icon} ${s.name} <span class="cat-chip">${e.cat}</span></span>
+          <span class="name">${escapeHtml(s.icon||'📍')} ${escapeHtml(s.name)} <span class="cat-chip">${escapeHtml(e.cat)}</span></span>
           <span class="amt">$${e.amount.toLocaleString()}</span>
         `;
         list.appendChild(item);
@@ -840,49 +1358,303 @@
     }
   }
 
-  function renderAll(){
-    renderTrail();
-    renderMap();
-    renderExpenses();
-  }
-
-  // ===== Persistence =====
-  async function persist(){
-    if(!storageReady) return;
-    try{
-      if(window.storage && window.storage.set) {
-        await window.storage.set('tainan-trip-progress', JSON.stringify(state), false);
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      }
-    }catch(err){
-      console.error('Storage save failed', err);
-    }
-  }
-
-  async function loadState(){
-    try{
-      let resultStr = null;
-      if(window.storage && window.storage.get) {
-        const result = await window.storage.get('tainan-trip-progress', false);
-        if(result && result.value) resultStr = result.value;
-      } else {
-        resultStr = localStorage.getItem(STORAGE_KEY);
-      }
-
-      if(resultStr){
-        const parsed = JSON.parse(resultStr);
-        if(parsed && Array.isArray(parsed.completed)) state = parsed;
-      }
-    }catch(err){
-    }
-    storageReady = true;
-  }
-
-  (async function init(){
-    initMap();
-    await loadState();
+  // ============================================================
+  // 9. 儲存（會同時更新畫面上的 trip 物件，再寫回 Store）
+  // ============================================================
+  async function saveTrip(patch){
+    trip = Object.assign({}, trip, patch, { updatedAt: Date.now() });
     renderAll();
+    try{
+      await Store.set(trip.code, trip);
+    }catch(err){
+      console.error('儲存失敗', err);
+      alert('儲存失敗，請檢查網路連線或 Firebase 設定。');
+    }
+  }
+
+  // ============================================================
+  // 10. 編輯行程設定（標題 / 副標題 / 分類）
+  // ============================================================
+  function fillSettingsForm(){
+    settingsTitle.value = trip.title;
+    settingsSubtitle.value = trip.subtitle || '';
+    renderCatChips();
+    renderEditorList();
+  }
+  saveSettingsBtn.addEventListener('click', async () => {
+    await saveTrip({
+      title: settingsTitle.value.trim() || '我的行程',
+      subtitle: settingsSubtitle.value.trim()
+    });
+  });
+
+  function renderCatChips(){
+    catChips.innerHTML = '';
+    trip.categories.forEach(cat => {
+      const chip = document.createElement('span');
+      chip.className = 'cat-chip-tag';
+      chip.innerHTML = `${escapeHtml(cat)} <button title="移除">✕</button>`;
+      chip.querySelector('button').addEventListener('click', async () => {
+        if(trip.categories.length <= 1){ alert('至少要保留一個分類'); return; }
+        await saveTrip({ categories: trip.categories.filter(c => c !== cat) });
+        renderCatChips();
+      });
+      catChips.appendChild(chip);
+    });
+  }
+  addCatBtn.addEventListener('click', async () => {
+    const val = newCatInput.value.trim();
+    if(!val) return;
+    if(trip.categories.includes(val)){ newCatInput.value=''; return; }
+    await saveTrip({ categories: trip.categories.concat([val]) });
+    newCatInput.value = '';
+    renderCatChips();
+  });
+
+  function populateCategorySelects(){
+    [catSelect, stopCat].forEach(sel => {
+      const current = sel.value;
+      sel.innerHTML = '';
+      trip.categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat; opt.textContent = cat;
+        sel.appendChild(opt);
+      });
+      if(current && trip.categories.includes(current)) sel.value = current;
+    });
+  }
+
+  // ============================================================
+  // 11. 站點清單（編輯模式）：新增 / 編輯 / 刪除 / 排序
+  // ============================================================
+  function renderEditorList(){
+    stopCountLabel.textContent = trip.stops.length;
+    stopEditList.innerHTML = '';
+    if(trip.stops.length === 0){
+      stopEditList.innerHTML = '<div class="empty-state">還沒有站點，點下方按鈕新增第一站吧！</div>';
+      return;
+    }
+    trip.stops.forEach((s, idx) => {
+      const row = document.createElement('div');
+      row.className = 'stop-edit-row';
+      row.innerHTML = `
+        <span class="sr-icon">${escapeHtml(s.icon||'📍')}</span>
+        <span class="sr-name">${escapeHtml(s.name)}</span>
+        <span class="sr-cat">${escapeHtml(s.cat||'')}</span>
+        <div class="sr-actions">
+          <button data-act="up" ${idx===0?'disabled':''} title="上移">↑</button>
+          <button data-act="down" ${idx===trip.stops.length-1?'disabled':''} title="下移">↓</button>
+          <button data-act="edit" title="編輯">✏️</button>
+          <button data-act="del" class="danger" title="刪除">🗑</button>
+        </div>
+      `;
+      row.querySelector('[data-act="up"]').addEventListener('click', () => moveStop(idx, -1));
+      row.querySelector('[data-act="down"]').addEventListener('click', () => moveStop(idx, 1));
+      row.querySelector('[data-act="edit"]').addEventListener('click', () => openStopEditor(s.id));
+      row.querySelector('[data-act="del"]').addEventListener('click', () => deleteStop(s.id));
+      stopEditList.appendChild(row);
+    });
+  }
+
+  async function moveStop(idx, dir){
+    const stops = trip.stops.slice();
+    const target = idx + dir;
+    if(target < 0 || target >= stops.length) return;
+    const tmp = stops[idx]; stops[idx] = stops[target]; stops[target] = tmp;
+    await saveTrip({ stops });
+    renderEditorList();
+  }
+
+  async function deleteStop(id){
+    if(!confirm('確定要刪除這一站嗎？相關的打卡與花費紀錄也會一併移除。')) return;
+    const stops = trip.stops.filter(s => s.id !== id).map(s => {
+      if(s.unlockAfter && s.unlockAfter.includes(id)){
+        return Object.assign({}, s, { unlockAfter: s.unlockAfter.filter(x => x !== id) });
+      }
+      return s;
+    });
+    const completed = trip.completed.filter(x => x !== id);
+    const expenses = Object.assign({}, trip.expenses);
+    delete expenses[id];
+    await saveTrip({ stops, completed, expenses });
+    renderEditorList();
+  }
+
+  addStopBtn.addEventListener('click', () => openStopEditor(null));
+
+  // ---- 站點編輯 Modal ----
+  let editorMap = null, editorMarker = null;
+
+  function openStopEditor(id){
+    editingStopId = id;
+    const s = id ? trip.stops.find(x => x.id === id) : null;
+    stopModalHeading.textContent = s ? '編輯站點' : '新增站點';
+    stopIcon.value = s ? (s.icon || '') : '📍';
+    stopName.value = s ? s.name : '';
+    stopMetaText.value = s ? (s.meta || '') : '';
+    stopNote.value = s ? (s.note || '') : '';
+    stopMenu.value = s ? (s.menu || '') : '';
+    stopMenuLink.value = s ? (s.menuLink || '') : '';
+    addressSearch.value = '';
+    addressResults.innerHTML = '';
+    pendingLat = s ? s.lat : null;
+    pendingLng = s ? s.lng : null;
+    deleteStopBtn.style.display = s ? 'inline-flex' : 'none';
+
+    populateCategorySelects();
+    if(s && s.cat) stopCat.value = s.cat;
+
+    renderUnlockList(id);
+    stopModalBackdrop.classList.add('open');
+
+    setTimeout(() => {
+      if(!editorMap){
+        editorMap = L.map('stopEditMap').setView([23.7, 121.0], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(editorMap);
+        editorMap.on('click', e => setPendingLatLng(e.latlng.lat, e.latlng.lng));
+      }
+      editorMap.invalidateSize();
+      if(pendingLat != null && pendingLng != null){
+        editorMap.setView([pendingLat, pendingLng], 15);
+        placeEditorMarker(pendingLat, pendingLng);
+      } else if(editorMarker){
+        editorMap.removeLayer(editorMarker);
+        editorMarker = null;
+      }
+      updateLatLngReadout();
+    }, 50);
+  }
+
+  function renderUnlockList(id){
+    unlockList.innerHTML = '';
+    const others = trip.stops.filter(s => s.id !== id);
+    if(others.length === 0){
+      unlockList.innerHTML = '<div class="empty-state" style="padding:8px;">目前還沒有其他站點可以設定</div>';
+      return;
+    }
+    const current = id ? (trip.stops.find(s=>s.id===id).unlockAfter || []) : [];
+    others.forEach(s => {
+      const label = document.createElement('label');
+      label.className = 'unlock-item';
+      label.innerHTML = `<input type="checkbox" value="${s.id}" ${current.includes(s.id)?'checked':''}> ${escapeHtml(s.icon||'📍')} ${escapeHtml(s.name)}`;
+      unlockList.appendChild(label);
+    });
+  }
+
+  function setPendingLatLng(lat, lng){
+    pendingLat = lat; pendingLng = lng;
+    placeEditorMarker(lat, lng);
+    updateLatLngReadout();
+  }
+  function placeEditorMarker(lat, lng){
+    if(editorMarker){ editorMarker.setLatLng([lat,lng]); }
+    else { editorMarker = L.marker([lat,lng], { draggable:true }).addTo(editorMap); editorMarker.on('dragend', () => {
+      const p = editorMarker.getLatLng(); setPendingLatLng(p.lat, p.lng);
+    }); }
+  }
+  function updateLatLngReadout(){
+    latlngReadout.textContent = (pendingLat != null && pendingLng != null)
+      ? `${pendingLat.toFixed(5)}, ${pendingLng.toFixed(5)}`
+      : '尚未設定，點擊地圖或搜尋地址來設定位置';
+  }
+
+  addressSearchBtn.addEventListener('click', async () => {
+    const q = addressSearch.value.trim();
+    if(!q) return;
+    addressResults.innerHTML = '<div class="search-result-item">搜尋中…</div>';
+    try{
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`;
+      const res = await fetch(url);
+      const list = await res.json();
+      addressResults.innerHTML = '';
+      if(list.length === 0){
+        addressResults.innerHTML = '<div class="search-result-item">找不到符合的地點，試試更完整的地址或店名</div>';
+        return;
+      }
+      list.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'search-result-item';
+        div.textContent = item.display_name;
+        div.addEventListener('click', () => {
+          const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+          editorMap.setView([lat,lng], 16);
+          setPendingLatLng(lat, lng);
+          addressResults.innerHTML = '';
+        });
+        addressResults.appendChild(div);
+      });
+    }catch(err){
+      console.error(err);
+      addressResults.innerHTML = '<div class="search-result-item">搜尋失敗，請稍後再試</div>';
+    }
+  });
+
+  saveStopBtn.addEventListener('click', async () => {
+    const name = stopName.value.trim();
+    if(!name){ alert('請輸入站點名稱'); return; }
+    const unlockAfter = Array.from(unlockList.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+    const stopData = {
+      id: editingStopId || newStopId(),
+      icon: stopIcon.value.trim() || '📍',
+      name,
+      cat: stopCat.value,
+      meta: stopMetaText.value.trim(),
+      note: stopNote.value.trim(),
+      lat: pendingLat, lng: pendingLng,
+      menu: stopMenu.value.trim(),
+      menuLink: stopMenuLink.value.trim(),
+      unlockAfter
+    };
+    let stops;
+    if(editingStopId){
+      stops = trip.stops.map(s => s.id === editingStopId ? stopData : s);
+    } else {
+      stops = trip.stops.concat([stopData]);
+    }
+    await saveTrip({ stops });
+    closeStopEditor();
+    renderEditorList();
+  });
+
+  deleteStopBtn.addEventListener('click', () => {
+    if(editingStopId) deleteStop(editingStopId);
+    closeStopEditor();
+  });
+
+  function closeStopEditor(){
+    stopModalBackdrop.classList.remove('open');
+    editingStopId = null;
+  }
+  document.getElementById('stopModalClose').addEventListener('click', closeStopEditor);
+  stopModalBackdrop.addEventListener('click', (e) => { if(e.target === stopModalBackdrop) closeStopEditor(); });
+
+  // ============================================================
+  // 12. 小工具
+  // ============================================================
+  function escapeHtml(str){
+    return String(str == null ? '' : str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ============================================================
+  // 13. 初始化
+  // ============================================================
+  (function init(){
+    if(usingFirebase){
+      fbBanner.style.display = 'none';
+    } else {
+      fbBannerTitle.textContent = '⚠️ 尚未連接資料庫，目前僅能在這台裝置上使用';
+    }
+    initMap();
+
+    const urlCode = new URLSearchParams(location.search).get('trip');
+    const lastCode = localStorage.getItem('lastTripCode');
+    if(urlCode){
+      joinCodeAndEnter(urlCode.toUpperCase());
+    } else if(lastCode){
+      resumeCode.textContent = lastCode;
+      gateResume.style.display = 'flex';
+    }
   })();
 
 })();
